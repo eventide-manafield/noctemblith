@@ -82,10 +82,16 @@ describe('Noctite first-run custom emoji', () => {
 		expect(state.values[1].host).toBeNull();
 	});
 
-	it('never generates off-site or HTTP emoji image URLs', async () => {
+	it('derives image URLs from the configured origin, including internal test origins', async () => {
 		const state = makeFakeDb();
-		await expect(seedNoctiteEmoji(state.db, 'http://noctite.example/', () => 'unused'))
-			.rejects.toThrow(/trusted HTTPS/);
+		expect(await seedNoctiteEmoji(state.db, 'http://a.test:3000/', () => 'a-unique-id')).toBe('a-unique-id');
+		expect(state.values[0].publicUrl).toBe('http://a.test:3000/static-assets/noctite-emoji.png');
+	});
+
+	it('rejects non-HTTP(S) origins before touching storage', async () => {
+		const state = makeFakeDb();
+		await expect(seedNoctiteEmoji(state.db, 'ftp://noctite.example/', () => 'unused'))
+			.rejects.toThrow(/HTTP\(S\)/);
 		expect(state.insert).not.toHaveBeenCalled();
 		expect(state.db.transaction).not.toHaveBeenCalled();
 	});
