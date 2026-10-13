@@ -84,6 +84,40 @@ and Redis state are isolated named volumes.
    test instances. Test WebFinger, NodeInfo, inbox delivery, outbound signed
    requests, media fetch, account handles, moderation, and undo/retry behavior.
 
+## Production ingress templates (DO NOT APPLY AUTOMATICALLY)
+
+The following are operator-reviewed **candidates**, not running configuration:
+
+- `compose.production-edge.candidate.yml` is an overlay on the development
+  stack template. It changes the Compose project to **`noctite-prod`**,
+  switches the adapter network to existing `manafield-modules`, and joins
+  **Noctite only** to `manafield-edge` with alias `noctite-prod`.
+  The database and Redis remain private and keep new production-scoped volumes.
+- `traefik.noctite.candidate.yml` adds only
+  `Host(noctite.manafield.studio)` → `http://noctite-prod:3000`
+  over the existing `websecure` entrypoint. It is not installed in
+  `/home/nayuz/infra/traefik/dynamic`.
+
+The production operator must prepare fresh, separate `.config/default.yml`
+and database secrets using approved host permissions, pin the container to
+an audited GHCR image digest, verify the Noctite URL is final, check TLS
+certificates and Cloudflare routes, review RAM use / backups / account creation
+and local moderation settings, and only **then** run the production stack.
+Do not copy test volumes or run migration against any existing Manafield DB.
+
+For static validation without starting containers:
+
+```bash
+NOCTITE_IMAGE='<verified-ghcr-image-digest>' \
+  docker compose -f deploy/manafield/compose.dev.candidate.yml \
+                 -f deploy/manafield/compose.production-edge.candidate.yml \
+  config --quiet
+```
+
+That command verifies syntax, **not** runtime networking, database migrations,
+TLS, federation, storage ownership or application readiness. The real
+ActivityPub domain will be irreversible once remote identities are exchanged.
+
 ## 4. Production gates
 
 - Production site at `noctite.manafield.studio` must have working inbound
