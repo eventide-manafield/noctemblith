@@ -9997,6 +9997,10 @@ export interface Locale extends ILocale {
          */
         "clicker": string;
         /**
+         * 外部モジュール
+         */
+        "externalModule": string;
+        /**
          * もうすぐ誕生日のユーザー
          */
         "birthdayFollowings": string;
@@ -10121,6 +10125,20 @@ export interface Locale extends ILocale {
              * 最大表示件数
              */
             "maxEntries": string;
+        };
+        "_externalModule": {
+            /**
+             * モジュールのURL（HTTPS）
+             */
+            "url": string;
+            /**
+             * URLを設定すると、この場所に外部モジュールを表示します。
+             */
+            "setupHint": string;
+            /**
+             * 新しいタブで開く
+             */
+            "openInNewTab": string;
         };
         "_rssTicker": {
             /**
