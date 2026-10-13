@@ -63,5 +63,10 @@ test('Noctite custom emoji is seeded at startup through the normal emoji databas
 	assert.match(service, /onApplicationBootstrap/);
 	assert.match(service, /seedNoctiteEmoji/);
 	assert.match(seeder, /pg_advisory_xact_lock/);
+	assert.match(seeder, /noctite_bootstrap_state/);
+	assert.match(seeder, /if \(installed.length !== 0\) return null/);
 	assert.match(seeder, /host: null/);
+	assert.match(docs, /A deleted emoji stays deleted/);
+	const migration = txt('packages/backend/migration/1791940000000-NoctiteDefaultEmojiBootstrapState.js');
+	assert.match(migration, /CREATE TABLE "noctite_bootstrap_state"/);
 });
