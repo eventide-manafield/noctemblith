@@ -158,23 +158,14 @@ export class ClientServerService {
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			'theme_color': this.meta.themeColor || '#86b300',
 			'icons': [{
-				// 空文字列の場合右辺を使いたいため
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				'src': this.meta.app192IconUrl || '/static-assets/icons/192.png',
-				'sizes': '192x192',
+				'src': this.meta.app192IconUrl || '/static-assets/noctite-emoji.png',
+				'sizes': this.meta.app192IconUrl ? '192x192' : '128x128',
 				'type': 'image/png',
-				'purpose': 'maskable',
+				'purpose': 'any',
 			}, {
-				// 空文字列の場合右辺を使いたいため
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				'src': this.meta.app512IconUrl || '/static-assets/icons/512.png',
-				'sizes': '512x512',
-				'type': 'image/png',
-				'purpose': 'maskable',
-			}, {
-				'src': '/static-assets/splash.png',
-				'sizes': '300x300',
-				'type': 'image/png',
+				'src': this.meta.app512IconUrl || '/static-assets/noctite.svg',
+				'sizes': this.meta.app512IconUrl ? '512x512' : 'any',
+				'type': this.meta.app512IconUrl ? 'image/png' : 'image/svg+xml',
 				'purpose': 'any',
 			}],
 			'share_target': {
@@ -289,11 +280,11 @@ export class ClientServerService {
 		});
 
 		fastify.get('/favicon.ico', async (request, reply) => {
-			return reply.sendFile('/favicon.ico', this.staticAssets);
+			return reply.redirect('/static-assets/noctite-emoji.png', 302);
 		});
 
 		fastify.get('/apple-touch-icon.png', async (request, reply) => {
-			return reply.sendFile('/apple-touch-icon.png', this.staticAssets);
+			return reply.sendFile('/noctite-emoji.png', this.staticAssets);
 		});
 
 		fastify.get<{ Params: { path: string } }>('/fluent-emoji/:path(.*)', async (request, reply) => {
