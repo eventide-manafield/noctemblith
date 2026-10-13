@@ -36,29 +36,51 @@ deploy the new image after review; any explicit instance icon and browser
 caches may require manual refresh. GitHub's repository social preview image
 is also a separate GitHub repository setting, not controlled by source code.
 
-## Register `:noctite:` in an instance
+## Built-in `:noctite:` custom emoji
 
-Misskey custom emoji is stored in the **individual instance database**.
-Adding a PNG to the Git repository does *not* register an emoji on an
-already-running server. Do not seed or overwrite custom emojis silently.
+A new or existing **independent Noctite installation** automatically receives
+its local `:noctite:` emoji when the backend starts after migrations.
 
-After deploying a reviewed build, an instance administrator can:
+The startup hook in `CustomEmojiService` calls
+`seedNoctiteEmoji()` using the **instance's own configured public URL**.
+It creates a real row in the regular PostgreSQL `emoji` table:
 
-1. Download `assets/noctite-emoji.png` (transparent PNG, 128×128).
-2. Open **Control Panel → Custom Emojis** (custom emoji manager).
-3. Choose **Add** / local emoji upload, select the PNG.
-4. Set the exact name `noctite` (no leading/trailing colon in the name field).
-5. Set optional category `Noctite`, and choose **localOnly** according to
-   the server's federation policy. Leave aliases empty unless intentional.
-6. Save and confirm `:noctite:` appears in the emoji picker and reactions.
-   Confirm publication policy with the server operator before federation.
+- name: `noctite` (used as `:noctite:`)
+- category: `Noctite`
+- image: `https://<instance-host>/static-assets/noctite-emoji.png`
+- public reaction, federatable custom emoji (`localOnly: false`)
+- no aliases and no special permissions
 
-The administrator must have `canManageCustomEmojis` permission. The Misskey
-`admin/emoji/add` endpoint requires authenticated admin privileges and a
-Drive file ID; copying the asset is **not** an alternative to that API.
+Consequently it appears in the ordinary `/api/emojis` response,
+custom emoji picker, and reactions without special frontend hardcoding or
+a manual admin upload.
 
-For a different independently hosted Noctite instance, the local
-administrator decides whether and how to install the same emoji.
+### Idempotence, local ownership, and intentional defaults
+
+Startup takes a **PostgreSQL transaction-scoped advisory lock** before checking
+for an existing local `noctite` emoji and inserting the default. Multiple
+worker processes racing on startup cannot each create a second initial emoji.
+PostgreSQL's usual `UNIQUE(name, host)` constraint alone is insufficient
+because local emoji rows have a NULL host.
+
+When a local `:noctite:` already exists, the seed **does not change its
+image, aliases, category, restrictions, or any other fields**. Operators
+may customize the emoji through standard Misskey controls.
+
+By Noctite policy, if an operator deletes `:noctite:` entirely, the default
+will be restored on the **next server restart**. This is intentional: an
+installed Noctite is always expected to include its namesake emoji. Manual
+customization is respected, but the alias should remain present.
+
+**No existing running server or database was modified by this pull request.**
+A server must install and launch a new image containing the seeding code for
+the row to be created. Different Noctite instances seed their own records
+and use their own ActivityPub host names; an instance owner's configuration
+always determines the domain.
+
+To verify after deployment, an administrator can check the built-in emoji
+in the picker, or read the public `GET /api/emojis` response. No password,
+manual DB INSERT, or migration of existing user records is needed.
 
 ## Check
 
@@ -66,6 +88,6 @@ administrator decides whether and how to install the same emoji.
 node --test scripts/noctite-branding.test.mjs
 ```
 
-This checks the committed PNG signature, dimensions, SHA-256, exact duplicate,
-basic SVG safety and the expected default fallbacks. It requires no Docker,
-database, browser credentials, or running Noctite instance.
+This checks committed PNG metadata, basic SVG safety, default icon fallbacks,
+and the server seed hook's presence. A separate backend unit test checks actual
+seed logic and idempotence. Neither needs production credentials.
