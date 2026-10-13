@@ -15,6 +15,13 @@ on:
       - "packages/frontend/src/pages/about.overview.vue"
       - "scripts/noctite-branding.test.mjs"
       - "docs/branding.md"
+      - "packages/frontend-shared/themes/*-noctite.json5"
+      - "packages/frontend-shared/js/theme.ts"
+      - "packages/frontend/src/boot/common.ts"
+      - "packages/frontend/src/pages/settings/theme.vue"
+      - "packages/frontend/src/utility/code-highlighter.ts"
+      - "packages/frontend-embed/src/boot.ts"
+      - "scripts/noctite-themes.test.mjs"
       - ".github/workflows/noctite-branding.yml"
 permissions:
   contents: read
@@ -27,4 +34,4 @@ jobs:
         with:
           node-version: "22"
       - name: Validate icon assets and default UI fallbacks
-        run: node --test scripts/noctite-branding.test.mjs
+        run: node --test scripts/noctite-branding.test.mjs scripts/noctite-themes.test.mjs
