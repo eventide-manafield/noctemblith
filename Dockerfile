@@ -111,6 +111,8 @@ COPY --chown=misskey:misskey --from=native-builder /misskey/packages/misskey-bub
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/built ./packages/backend/built
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/i18n/built ./packages/i18n/built
 COPY --chown=misskey:misskey . ./
+# The final image must contain the exact metadata generated in native-builder.
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/assets/noctite-build.json ./packages/backend/assets/noctite-build.json
 
 ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so
 ENV NODE_ENV=production
