@@ -7,17 +7,18 @@ import { IsNull } from 'typeorm';
 import { MiEmoji } from '@/models/Emoji.js';
 import type { DataSource } from 'typeorm';
 
+const DEFAULT_EMOJI_BOOTSTRAP_KEY = 'default-noctite-emoji-v1';
+
 /**
- * Install Noctite's signature emoji into each independent instance.
+ * Install Noctite's signature emoji as an ordinary, editable custom emoji.
  *
- * Using the existing emoji table means every standard API, cache, reaction,
- * and ActivityPub path works without a separate hard-coded emoji list.
- * The PostgreSQL transaction-level advisory lock serializes startup workers;
- * the ordinary (name, host) unique index does not make NULL local hosts
- * unique in PostgreSQL, so a simple ON CONFLICT is NOT sufficient here.
+ * This is a **one-time installation**, NOT an enforcement hook:
+ * the persistent bootstrap marker means a deleted emoji stays deleted,
+ * including after upgrades and restarts.
  *
- * Existing :noctite: records (including administrator modifications) win.
- * If deleted, a later boot restores the default, by Noctite policy.
+ * The advisory lock serializes multiple bootstrapping processes.
+ * UNIQUE(name, host) alone is insufficient for local emojis: PostgreSQL
+ * permits multiple (name, NULL) rows under a regular unique constraint.
  */
 export async function seedNoctiteEmoji(
 	db: DataSource,
@@ -30,31 +31,48 @@ export async function seedNoctiteEmoji(
 	}
 
 	return db.transaction(async manager => {
-		// Constant lock keys; serialized across separate NestJS workers.
 		await manager.query("SELECT pg_advisory_xact_lock(hashtext('noctite'), hashtext('default-emoji'))");
 
+		// The marker survives emoji deletion, so restarting Noctite cannot
+		// resurrect an emoji the instance administrator intentionally deleted.
+		const installed = await manager.query(
+			'SELECT 1 FROM "noctite_bootstrap_state" WHERE "key" = $1',
+			[DEFAULT_EMOJI_BOOTSTRAP_KEY],
+		);
+		if (installed.length !== 0) return null;
+
+		// Adopt an existing :noctite: without ever overwriting its content.
 		const found = await manager.findOneBy(MiEmoji, {
 			name: 'noctite',
 			host: IsNull(),
 		});
-		if (found !== null) return null;
 
-		const id = generateId();
-		await manager.insert(MiEmoji, {
-			id,
-			updatedAt: new Date(),
-			name: 'noctite',
-			host: null,
-			category: 'Noctite',
-			aliases: [],
-			originalUrl: url.toString(),
-			publicUrl: url.toString(),
-			type: 'image/png',
-			license: null,
-			isSensitive: false,
-			localOnly: false,
-			roleIdsThatCanBeUsedThisEmojiAsReaction: [],
-		});
-		return id;
+		let createdId: string | null = null;
+		if (found === null) {
+			createdId = generateId();
+			await manager.insert(MiEmoji, {
+				id: createdId,
+				updatedAt: new Date(),
+				name: 'noctite',
+				host: null,
+				category: 'Noctite',
+				aliases: [],
+				originalUrl: url.toString(),
+				publicUrl: url.toString(),
+				type: 'image/png',
+				license: null,
+				isSensitive: false,
+				localOnly: false,
+				roleIdsThatCanBeUsedThisEmojiAsReaction: [],
+			});
+		}
+
+		// This completes initialization even when a matching emoji already
+		// existed. Both writes share a transaction: failure rolls both back.
+		await manager.query(
+			'INSERT INTO "noctite_bootstrap_state" ("key") VALUES ($1)',
+			[DEFAULT_EMOJI_BOOTSTRAP_KEY],
+		);
+		return createdId;
 	});
 }
