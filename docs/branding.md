@@ -55,22 +55,28 @@ Consequently it appears in the ordinary `/api/emojis` response,
 custom emoji picker, and reactions without special frontend hardcoding or
 a manual admin upload.
 
-### Idempotence, local ownership, and intentional defaults
+### Once at installation — not on every restart
 
-Startup takes a **PostgreSQL transaction-scoped advisory lock** before checking
-for an existing local `noctite` emoji and inserting the default. Multiple
-worker processes racing on startup cannot each create a second initial emoji.
-PostgreSQL's usual `UNIQUE(name, host)` constraint alone is insufficient
-because local emoji rows have a NULL host.
+A TypeORM migration adds a tiny `noctite_bootstrap_state` table that records
+whether the original default emoji has already been offered to this
+instance. During the **first boot of this branded release**,
+`CustomEmojiService` takes a PostgreSQL transaction-scoped advisory lock,
+checks the persistent marker, and inserts `:noctite:` only if the local
+record doesn't already exist. The marker is then saved in the same
+transaction. Multiple server processes cannot race to create duplicates.
 
-When a local `:noctite:` already exists, the seed **does not change its
-image, aliases, category, restrictions, or any other fields**. Operators
-may customize the emoji through standard Misskey controls.
+After initialization, the marker stays even if the administrator deletes
+`:noctite:`. **A deleted emoji stays deleted across restarts and software
+updates.** Noctite will not try to restore it or overwrite the user's choice.
 
-By Noctite policy, if an operator deletes `:noctite:` entirely, the default
-will be restored on the **next server restart**. This is intentional: an
-installed Noctite is always expected to include its namesake emoji. Manual
-customization is respected, but the alias should remain present.
+An existing local `:noctite:` also remains completely unchanged; marking
+the initial installation complete does not alter any administrator-owned
+image, category, aliases, visibility, or permissions.
+
+A migration tracking record is independent from the emoji itself, because
+PostgreSQL's regular `UNIQUE(name, host)` does not prevent multiple rows
+with a NULL (local) host. A transaction-scoped lock protects this first
+installation without introducing a permanent constraint on manual changes.
 
 **No existing running server or database was modified by this pull request.**
 A server must install and launch a new image containing the seeding code for
@@ -89,5 +95,5 @@ node --test scripts/noctite-branding.test.mjs
 ```
 
 This checks committed PNG metadata, basic SVG safety, default icon fallbacks,
-and the server seed hook's presence. A separate backend unit test checks actual
-seed logic and idempotence. Neither needs production credentials.
+and the server seed hook's presence. A separate backend unit test checks
+one-time installation, administrator deletion persistence, and idempotence. Neither needs production credentials.
