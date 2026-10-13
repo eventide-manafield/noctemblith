@@ -40,6 +40,12 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 
 COPY --link . ./
 
+# Generated at image-build time, never from an untrusted browser-supplied SHA.
+# The runtime serves this non-secret metadata at /noctite-build.json.
+ARG NOCTITE_BUILD_SHA=unknown
+ARG NOCTITE_UPDATE_CHANNEL=noctite/dev
+RUN printf '{"sha":"%s","channel":"%s"}\\n' "$NOCTITE_BUILD_SHA" "$NOCTITE_UPDATE_CHANNEL" > packages/backend/assets/noctite-build.json
+
 RUN pnpm build
 RUN rm -rf .git/
 
