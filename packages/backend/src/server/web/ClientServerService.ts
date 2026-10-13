@@ -156,7 +156,7 @@ export class ClientServerService {
 			'background_color': '#313a42',
 			// 空文字列の場合右辺を使いたいため
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-			'theme_color': this.meta.themeColor || '#86b300',
+			'theme_color': this.meta.themeColor || '#7A35B6',
 			'icons': [{
 				'src': this.meta.app192IconUrl || '/static-assets/noctite-emoji.png',
 				'sizes': this.meta.app192IconUrl ? '192x192' : '128x128',
