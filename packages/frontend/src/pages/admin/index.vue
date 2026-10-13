@@ -18,6 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<MkInfo v-if="noInquiryUrl" warn>{{ i18n.ts.noInquiryUrlWarning }} <MkA to="/admin/settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noBotProtection" warn>{{ i18n.ts.noBotProtectionWarning }} <MkA to="/admin/security" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
 					<MkInfo v-if="noEmailServer" warn>{{ i18n.ts.noEmailServerWarning }} <MkA to="/admin/email-settings" class="_link">{{ i18n.ts.configure }}</MkA></MkInfo>
+					<NoctiteUpdatePanel v-if="$i?.isAdmin" compact/>
 				</div>
 
 				<MkSuperMenu :def="menuDef" :searchIndex="searchIndex" :grid="narrow"></MkSuperMenu>
@@ -37,6 +38,8 @@ import type { PageMetadata } from '@/page.js';
 import { i18n } from '@/i18n.js';
 import MkSuperMenu from '@/components/MkSuperMenu.vue';
 import MkInfo from '@/components/MkInfo.vue';
+import NoctiteUpdatePanel from '@/studio/manafield/eventide/NoctiteUpdatePanel.vue';
+import { $i } from '@/i.js';
 import { instance } from '@/instance.js';
 import { lookup } from '@/utility/lookup.js';
 import * as os from '@/os.js';
@@ -189,7 +192,12 @@ const menuDef = computed<SuperMenuDef[]>(() => [{
 		text: i18n.ts.branding,
 		to: '/admin/branding',
 		active: currentPage.value?.route.name === 'branding',
-	}, {
+	}, ...($i?.isAdmin ? [{
+		icon: 'ti ti-download',
+		text: 'Noctite 업데이트',
+		to: '/admin/noctite-updates',
+		active: currentPage.value?.route.name === 'noctiteUpdates',
+	}] : []), {
 		icon: 'ti ti-shield',
 		text: i18n.ts.moderation,
 		to: '/admin/moderation',
