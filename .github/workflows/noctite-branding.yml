@@ -1,0 +1,27 @@
+name: Noctite branding assets
+on:
+  pull_request:
+    paths:
+      - "assets/noctite-emoji.png"
+      - "packages/backend/assets/noctite.svg"
+      - "packages/backend/assets/noctite-emoji.png"
+      - "packages/backend/src/server/web/ClientServerService.ts"
+      - "packages/backend/src/server/web/HtmlTemplateService.ts"
+      - "packages/frontend/src/ui/_common_/navbar.vue"
+      - "packages/frontend/src/ui/_common_/navbar-h.vue"
+      - "packages/frontend/src/pages/about.overview.vue"
+      - "scripts/noctite-branding.test.mjs"
+      - "docs/branding.md"
+      - ".github/workflows/noctite-branding.yml"
+permissions:
+  contents: read
+jobs:
+  verify-branding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate icon assets and default UI fallbacks
+        run: node --test scripts/noctite-branding.test.mjs
