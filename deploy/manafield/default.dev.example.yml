@@ -17,4 +17,8 @@ redis:
 fulltextSearch:
   provider: sqlLike
 
+# Misskey IdService requires this field (undefined causes a startup crash).
+# Once accounts or notes exist, do not change the ID generation method.
+id: aidx
+
 clusterLimit: 1
