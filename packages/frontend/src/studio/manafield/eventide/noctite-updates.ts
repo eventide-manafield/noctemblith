@@ -67,7 +67,7 @@ export function parseLatestSuccessfulRun(body: unknown, channel: string): Update
 
 export function shouldNotify(candidate: UpdateCandidate, decision: UpdateDecision, now = Date.now()): boolean {
 	if (decision.skippedSha === candidate.sha) return false;
-	if (decision.snoozedSha === candidate.sha && Number.isFinite(decision.snoozedUntil) &&
+	if (decision.snoozedSha === candidate.sha && typeof decision.snoozedUntil === 'number' && Number.isFinite(decision.snoozedUntil) &&
 		(decision.snoozedUntil ?? 0) > now) return false;
 	return true;
 }
