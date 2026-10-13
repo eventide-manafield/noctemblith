@@ -24,7 +24,7 @@ sudo python3 scripts/noctite-set-dev-setup-password.py .config/default.yml
 ```
 
 The helper requests a strong, unique **setup password** twice without echo,
-requires at least 20 characters, refuses the wrong origin or missing `id: aidx`,
+requires at least 12 characters, refuses the wrong origin or missing `id: aidx`,
 and writes to Git-ignored `.config/default.yml`. It changes the file to
 root-owned mode 0600 with read ACL only for the container UID 991. The
 password is neither logged nor included in shell arguments/command history.

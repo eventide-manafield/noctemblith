@@ -36,9 +36,9 @@ def main() -> int:
         print("Expected the reviewed dev URL and id: aidx before configuring the setup password.", file=sys.stderr)
         return 2
 
-    first = getpass.getpass("Noctite dev INITIAL ADMIN setup password (minimum 20 characters): ")
+    first = getpass.getpass("Noctite dev INITIAL ADMIN setup password (minimum 12 characters): ")
     second = getpass.getpass("Repeat the setup password: ")
-    if first != second or len(first) < 20 or not first.isprintable():
+    if first != second or len(first) < 12 or not first.isprintable():
         print("Passwords differ, are too short, or contain non-printable characters. No change made.", file=sys.stderr)
         return 2
 
