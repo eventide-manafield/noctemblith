@@ -24,7 +24,7 @@ function makeFakeDb(existing: Record<string, any> | null = null) {
 		insert,
 	};
 	const db = {
-		transaction: vi.fn(async (callback: (manager: typeof manager) => Promise<unknown>) => callback(manager)),
+		transaction: vi.fn(async (callback: (tx: typeof manager) => Promise<unknown>) => callback(manager)),
 	} as unknown as DataSource;
 	return { db, values, manager, queries, insert, findOneBy };
 }
