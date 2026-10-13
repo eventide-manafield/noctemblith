@@ -2571,6 +2571,7 @@ _widgets:
   _userList:
     chooseList: "리스트 선택"
   clicker: "클리커"
+  externalModule: "외부 모듈"
   birthdayFollowings: "곧 생일인 사용자"
   chat: "채팅하기"
 _widgetOptions:
@@ -2605,6 +2606,10 @@ _widgetOptions:
     url: "RSS 필드의 URL"
     refreshIntervalSec: "갱신 간격(초)"
     maxEntries: "최대 표시 건수"
+  _externalModule:
+    url: "모듈 URL (HTTPS)"
+    setupHint: "설정에서 HTTPS 위젯 주소를 입력하면 여기에 표시돼."
+    openInNewTab: "새 탭에서 열기"
   _rssTicker:
     shuffle: "표시 순서 셔플"
     duration: "티커 스크롤 속도(초)"
