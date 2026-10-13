@@ -84,6 +84,22 @@ and Redis state are isolated named volumes.
    test instances. Test WebFinger, NodeInfo, inbox delivery, outbound signed
    requests, media fetch, account handles, moderation, and undo/retry behavior.
 
+## Federation discovery smoke check (after HTTPS goes live)
+
+Once a stable public Noctite account has been created, run this **read-only**
+client from a machine outside the server's private Docker network:
+
+```bash
+node scripts/noctite-federation-smoke.mjs https://noctite.manafield.studio localusername
+```
+
+It checks HTTPS health, NodeInfo discovery, WebFinger for
+`acct:localusername@noctite.manafield.studio`, and the ActivityPub actor's
+inbox/outbox/public key. It does not mutate state or need credentials.
+**A pass does not prove federation**: then follow the account from a real
+second server and verify signed inbound follow, accept, post delivery, replies,
+unfollow, blocked actors, media and retries.
+
 ## 4. Production gates
 
 - Production site at `noctite.manafield.studio` must have working inbound
