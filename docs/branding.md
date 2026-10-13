@@ -36,6 +36,15 @@ deploy the new image after review; any explicit instance icon and browser
 caches may require manual refresh. GitHub's repository social preview image
 is also a separate GitHub repository setting, not controlled by source code.
 
+## Default color identity
+
+Noctite includes [Dusk (dark) and Dawn (light) built-in themes](noctite-themes.md).
+The dark scheme uses purple crystal and gently contained orange sunset
+highlights. The light scheme follows the current Manafield Home ivory and
+lavender colors, with orange reserved for secondary accents.
+
+Existing user-selected themes and instance-admin theme overrides remain intact.
+
 ## Built-in `:noctite:` custom emoji
 
 A new or existing **independent Noctite installation** automatically receives
