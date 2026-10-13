@@ -22,6 +22,14 @@ on:
       - "packages/frontend/src/utility/code-highlighter.ts"
       - "packages/frontend-embed/src/boot.ts"
       - "scripts/noctite-themes.test.mjs"
+      - "scripts/noctite-update-center.test.mjs"
+      - "packages/frontend/src/studio/manafield/eventide/**"
+      - "packages/frontend/src/pages/admin/noctite-updates.vue"
+      - "packages/frontend/src/pages/admin/index.vue"
+      - "packages/frontend/src/router.definition.ts"
+      - ".github/workflows/docker.yml"
+      - "Dockerfile"
+      - "docs/noctite-update-center.md"
       - ".github/workflows/noctite-branding.yml"
 permissions:
   contents: read
@@ -34,4 +42,4 @@ jobs:
         with:
           node-version: "22"
       - name: Validate icon assets and default UI fallbacks
-        run: node --test scripts/noctite-branding.test.mjs scripts/noctite-themes.test.mjs
+        run: node --experimental-strip-types --test scripts/noctite-branding.test.mjs scripts/noctite-themes.test.mjs scripts/noctite-update-center.test.mjs
