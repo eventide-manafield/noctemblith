@@ -6,6 +6,8 @@
 #   secrets/database-password
 #
 # The image must be an audited, published Noctite image, pinned by digest.
+name: noctite-dev
+
 services:
   noctite:
     image: ${NOCTITE_IMAGE:?Set a verified Noctite image digest}
@@ -82,10 +84,10 @@ services:
 networks:
   noctite_private:
     internal: true
-  # Manafield Adapter shares only this existing external network and calls
-  # the Noctite /healthz/ endpoint. PostgreSQL and Redis are not attached.
+  # Use a DEV adapter network, never the operating Manafield modules network.
+  # A separately managed development Manafield Adapter joins this network.
   manafield_modules:
-    name: manafield-modules
+    name: ${NOCTITE_MODULES_NETWORK:-noctite-dev-modules}
     external: true
 
 secrets:
