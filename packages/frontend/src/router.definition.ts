@@ -467,6 +467,10 @@ export const ROUTE_DEF = [{
 		name: 'branding',
 		component: page(() => import('@/pages/admin/branding.vue')),
 	}, {
+		path: '/noctite-updates',
+		name: 'noctiteUpdates',
+		component: page(() => import('@/pages/admin/noctite-updates.vue')),
+	}, {
 		path: '/moderation',
 		name: 'moderation',
 		component: page(() => import('@/pages/admin/moderation.vue')),
