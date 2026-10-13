@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import { In, IsNull } from 'typeorm';
+import type { DataSource } from 'typeorm';
 import { EmojiEntityService } from '@/core/entities/EmojiEntityService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { IdService } from '@/core/IdService.js';
@@ -15,6 +16,8 @@ import { bindThis } from '@/decorators.js';
 import { DI } from '@/di-symbols.js';
 import { MemoryKVCache, RedisSingleCache } from '@/misc/cache.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
+import { seedNoctiteEmoji } from '@/core/noctite-default-emoji.js';
+import type { Config } from '@/config.js';
 import type { EmojisRepository, MiRole, MiUser } from '@/models/_.js';
 import type { MiEmoji } from '@/models/Emoji.js';
 import type { Serialized } from '@/types.js';
@@ -58,11 +61,15 @@ export const fetchEmojisSortKeys = [
 export type FetchEmojisSortKeys = typeof fetchEmojisSortKeys[number];
 
 @Injectable()
-export class CustomEmojiService implements OnApplicationShutdown {
+export class CustomEmojiService implements OnApplicationBootstrap, OnApplicationShutdown {
 	private emojisCache: MemoryKVCache<MiEmoji | null>;
 	public localEmojisCache: RedisSingleCache<Map<string, MiEmoji>>;
 
 	constructor(
+		@Inject(DI.config)
+		private config: Config,
+		@Inject(DI.db)
+		private db: DataSource,
 		@Inject(DI.redis)
 		private redisClient: Redis.Redis,
 		@Inject(DI.emojisRepository)
@@ -87,6 +94,22 @@ export class CustomEmojiService implements OnApplicationShutdown {
 				}]));
 			},
 		});
+	}
+
+
+	/**
+	 * Install the namesake :noctite: emoji only on the first run of this
+	 * branded release, after migrations. A persistent DB marker prevents a
+	 * manually deleted or customized emoji from being restored at restart.
+	 */
+	public async onApplicationBootstrap(): Promise<void> {
+		const id = await seedNoctiteEmoji(this.db, this.config.url, () => this.idService.gen());
+		if (id !== null) {
+			this.localEmojisCache.refresh();
+			this.globalEventService.publishBroadcastStream('emojiAdded', {
+				emoji: await this.emojiEntityService.packDetailed(id),
+			});
+		}
 	}
 
 	@bindThis

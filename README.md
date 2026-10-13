@@ -1,4 +1,17 @@
 <div align="center">
+  <img src="./packages/backend/assets/noctite.svg" width="170" alt="Noctite — purple crescent crystal with sunset light"/>
+  <h1>Noctite · 녹타이트 (그믐석)</h1>
+  <p>A federated social platform based on Misskey, with its own independent identity.</p>
+  <p><a href="https://noctite.manafield.studio/">Noctite</a> · <a href="https://github.com/eventide-manafield/noctite">Source</a> · <a href="./docs/branding.md">Brand assets &amp; :noctite: emoji</a></p>
+</div>
+
+> **Noctite is a fork of [Misskey](https://github.com/misskey-dev/misskey)** (AGPL-3.0). The original project and contributors remain credited below. This development branch prepares a default `:noctite:` emoji for each new Noctite runtime; it does not modify any database until a revised image is deployed and started.
+
+---
+
+## Upstream Misskey
+
+<div align="center">
 <a href="https://misskey-hub.net">
 	<img src="./assets/title_float.svg" alt="Misskey logo" style="border-radius:50%" width="300"/>
 </a>
