@@ -83,3 +83,7 @@ vite.config.local-dev.ts.timestamp-*
 
 # Affinity
 *.af~lock~
+
+# Noctite Manafield integration private runtime values
+/deploy/manafield/secrets/
+/deploy/manafield/.env

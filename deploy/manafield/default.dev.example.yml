@@ -1,0 +1,20 @@
+# EXAMPLE ONLY. Copy to .config/default.yml locally after choosing an
+# immutable HTTPS development hostname; do not publish dev actors from .invalid.
+url: https://noctite-dev.example.invalid/
+port: 3000
+
+db:
+  host: db
+  port: 5432
+  db: noctite
+  user: noctite
+  # Intentionally no db.pass: taken from DATABASE_PASSWORD at runtime.
+
+redis:
+  host: redis
+  port: 6379
+
+fulltextSearch:
+  provider: sqlLike
+
+clusterLimit: 1

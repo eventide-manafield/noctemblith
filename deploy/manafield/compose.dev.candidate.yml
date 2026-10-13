@@ -1,0 +1,100 @@
+# Candidate only. Does NOT start anything on merge. Run solely in a reviewed
+# development environment with its own immutable Noctite domain.
+#
+# Required operator-owned files (NEVER commit):
+#   .config/default.yml     (url, db host=db, db user=noctite, redis host=redis)
+#   secrets/database-password
+#
+# The image must be an audited, published Noctite image, pinned by digest.
+name: noctite-dev
+
+services:
+  noctite:
+    image: ${NOCTITE_IMAGE:?Set a verified Noctite image digest}
+    restart: unless-stopped
+    init: true
+    volumes:
+      - type: bind
+        source: ../../.config
+        target: /misskey/.config
+        read_only: true
+      - noctite-media:/misskey/files
+    secrets:
+      - noctite_database_password
+    # Misskey reads DATABASE_PASSWORD from the environment. Supply it only
+    # inside the app process, not in the Compose file, shell history or logs.
+    entrypoint: ["/usr/bin/tini", "--"]
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        export DATABASE_PASSWORD="$$(cat /run/secrets/noctite_database_password)"
+        exec pnpm run migrateandstart
+    healthcheck:
+      test: ["CMD", "/bin/bash", "/misskey/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
+    networks:
+      noctite_private: {}
+      manafield_modules:
+        aliases:
+          - noctite
+
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noctite
+      POSTGRES_DB: noctite
+      POSTGRES_PASSWORD_FILE: /run/secrets/noctite_database_password
+    secrets:
+      - noctite_database_password
+    volumes:
+      - noctite-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noctite -d noctite"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - noctite_private
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - noctite-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - noctite_private
+
+networks:
+  noctite_private:
+    internal: true
+  # Use a DEV adapter network, never the operating Manafield modules network.
+  # A separately managed development Manafield Adapter joins this network.
+  manafield_modules:
+    name: ${NOCTITE_MODULES_NETWORK:-noctite-dev-modules}
+    external: true
+
+secrets:
+  noctite_database_password:
+    file: ./secrets/database-password
+
+volumes:
+  noctite-postgres:
+  noctite-redis:
+  noctite-media:
