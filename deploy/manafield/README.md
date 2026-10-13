@@ -17,6 +17,14 @@ must not be renamed after federation begins. Reserve a distinct development
 hostname and data volumes; never migrate test actors into production by
 renaming their domain.
 
+## Development HTTPS and first-admin protection
+
+Before attaching the running dev Noctite to Traefik, follow the
+[development HTTPS ingress and secure initial admin runbook](DEV_INGRESS.md).
+The dev instance has its own immutable `noctite-dev.manafield.studio` actor
+origin, a required private `setupPassword`, and a separate Compose overlay.
+**Never install dev ingress before the initial administrator flow is protected.**
+
 ## 1. Build an image separately (operator action)
 
 The upstream Docker Hub publisher was replaced with a
