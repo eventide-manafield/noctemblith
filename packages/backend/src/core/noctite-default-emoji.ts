@@ -25,8 +25,8 @@ export async function seedNoctiteEmoji(
 	generateId: () => string,
 ): Promise<string | null> {
 	const url = new URL('/static-assets/noctite-emoji.png', instanceUrl);
-	if (url.protocol !== 'https:' && url.hostname !== 'localhost') {
-		throw new Error('Noctite default emoji requires a trusted HTTPS instance URL');
+	if (!['https:', 'http:'].includes(url.protocol)) {
+		throw new Error('Noctite default emoji requires the configured HTTP(S) instance origin');
 	}
 
 	return db.transaction(async manager => {
