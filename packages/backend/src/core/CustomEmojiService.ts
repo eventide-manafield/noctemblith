@@ -98,9 +98,9 @@ export class CustomEmojiService implements OnApplicationBootstrap, OnApplication
 
 
 	/**
-	 * The server starts after the standalone DB migrations have completed.
-	 * Every independent Noctite instance gets its namesake :noctite: emoji.
-	 * Repeated bootstraps never overwrite an administrator's existing emoji.
+	 * Install the namesake :noctite: emoji only on the first run of this
+	 * branded release, after migrations. A persistent DB marker prevents a
+	 * manually deleted or customized emoji from being restored at restart.
 	 */
 	public async onApplicationBootstrap(): Promise<void> {
 		const id = await seedNoctiteEmoji(this.db, this.config.url, () => this.idService.gen());
