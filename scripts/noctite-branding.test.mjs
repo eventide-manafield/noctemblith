@@ -54,9 +54,14 @@ test('server and frontend fallbacks respect instance overrides', () => {
 	}
 });
 
-test('Noctite custom emoji is documented as operator-installed, not silently seeded', () => {
+test('Noctite custom emoji is seeded at startup through the normal emoji database', () => {
 	const docs = txt('docs/branding.md');
+	const service = txt('packages/backend/src/core/CustomEmojiService.ts');
+	const seeder = txt('packages/backend/src/core/noctite-default-emoji.ts');
 	assert.match(docs, /:noctite:/);
-	assert.match(docs, /Custom Emojis/);
-	assert.match(docs, /does \*not\* register an emoji/);
+	assert.match(docs, /automatically receives/);
+	assert.match(service, /onApplicationBootstrap/);
+	assert.match(service, /seedNoctiteEmoji/);
+	assert.match(seeder, /pg_advisory_xact_lock/);
+	assert.match(seeder, /host: null/);
 });
