@@ -42,6 +42,10 @@ The administrator must provide:
 
 - A **unique development origin**, reachable over HTTPS with a valid proxy,
   different from the planned `noctite.manafield.studio` production origin.
+- The immutable ID generation setting `id: aidx` in `.config/default.yml`.
+  Omitting it crashes the backend during NestJS initialization
+  (`IdService` calls `config.id.toLowerCase()`); **never change it** after
+  creating local accounts or notes.
 - A random initial setup password, signup/moderation policy, reverse proxy
   trust CIDRs, and the public source repository URL for the modified AGPL app.
 - PostgreSQL `db` / `noctite` user/db and Redis `redis`, both isolated.
