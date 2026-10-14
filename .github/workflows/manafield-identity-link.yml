@@ -1,0 +1,39 @@
+name: Manafield identity-link schema checks
+on:
+  pull_request:
+    paths:
+      - "packages/backend/migration/1792000000004-ManafieldIdentityLink.js"
+      - "packages/backend/scripts/test-manafield-identity-link-migration.mjs"
+      - ".github/workflows/manafield-identity-link.yml"
+  push:
+    branches: [noctemblith/dev]
+    paths:
+      - "packages/backend/migration/1792000000004-ManafieldIdentityLink.js"
+      - "packages/backend/scripts/test-manafield-identity-link-migration.mjs"
+      - ".github/workflows/manafield-identity-link.yml"
+permissions:
+  contents: read
+jobs:
+  disposable-postgresql:
+    runs-on: ubuntu-latest
+    services:
+      pg:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: noct_test
+          POSTGRES_PASSWORD: noct_ci_only
+          POSTGRES_DB: noct_test
+        options: >-
+          --health-cmd "pg_isready -U noct_test -d noct_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify immutable, 1:1 local account links
+        env:
+          PG_SERVICE_CONTAINER_ID: ${{ job.services.pg.id }}
+        run: node packages/backend/scripts/test-manafield-identity-link-migration.mjs
