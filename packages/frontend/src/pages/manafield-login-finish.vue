@@ -32,7 +32,7 @@ onMounted(async () => {
   return;
  }
  try {
-  const response = await fetch('/auth/manafield/login/finish', {
+  const response = await window.fetch('/auth/manafield/login/finish', {
    method: 'POST',
    credentials: 'same-origin',
    cache: 'no-store',
