@@ -50,7 +50,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import MkButton from '@/components/MkButton.vue';
 import { $i } from '@/i.js';
 import {
@@ -108,7 +108,19 @@ async function copyTag(): Promise<void> {
 	}
 }
 
-onMounted(() => { void refresh(); });
+function synchronizeDecision(): void {
+	decision.value = readDecision($i?.id ?? 'none');
+}
+
+onMounted(() => {
+	window.addEventListener('noctite-update-decision', synchronizeDecision);
+	window.addEventListener('storage', synchronizeDecision);
+	void refresh();
+});
+onBeforeUnmount(() => {
+	window.removeEventListener('noctite-update-decision', synchronizeDecision);
+	window.removeEventListener('storage', synchronizeDecision);
+});
 </script>
 
 <style lang="scss" module>
