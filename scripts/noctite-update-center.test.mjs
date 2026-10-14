@@ -14,6 +14,8 @@ import {
 	isBuildMetadata,
 	parseLatestSuccessfulRun,
 	shouldNotify,
+	readDecision,
+	saveDecision,
 } from '../packages/frontend/src/studio/manafield/eventide/noctite-updates.ts';
 
 const oldSha = 'a'.repeat(40);
@@ -102,6 +104,38 @@ test('skip and snooze are separate decisions tied to an exact candidate SHA', ()
 	assert.equal(shouldNotify({ ...candidate, sha: oldSha }, snoozed, now), true);
 });
 
+test('skip and snooze decisions persist per admin in browser storage', () => {
+	const original = globalThis.localStorage;
+	const values = new Map();
+	globalThis.localStorage = {
+		getItem: key => values.get(key) ?? null,
+		setItem: (key, value) => { values.set(key, value); },
+	};
+	try {
+		saveDecision('one', chooseUpdate({}, nextSha, 'skip'));
+		assert.equal(readDecision('one').skippedSha, nextSha);
+		assert.deepEqual(readDecision('another-admin'), {});
+		assert.ok([...values.keys()][0].includes('studio.manafield.eventide'));
+	} finally {
+		globalThis.localStorage = original;
+	}
+});
+
+test('old images without build metadata are shown as untracked, without public GitHub requests', async () => {
+	const original = globalThis.fetch;
+	const urls = [];
+	globalThis.fetch = async url => {
+		urls.push(String(url));
+		return { ok: false, status: 404 };
+	};
+	try {
+		assert.equal((await checkForUpdates()).state, 'untracked');
+		assert.deepEqual(urls, ['/noctite-build.json']);
+	} finally {
+		globalThis.fetch = original;
+	}
+});
+
 test('UI buttons are real controls but do not grant Docker or host execution privileges', () => {
 	const ui = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctiteUpdatePanel.vue', import.meta.url), 'utf8');
 	const nav = readFileSync(new URL('../packages/frontend/src/pages/admin/index.vue', import.meta.url), 'utf8');
@@ -114,6 +148,7 @@ test('UI buttons are real controls but do not grant Docker or host execution pri
 	assert.ok(nav.includes('NoctiteUpdatePanel'));
 	assert.ok(router.includes('/noctite-updates'));
 	assert.ok(docker.includes('NOCTITE_BUILD_SHA'));
+	assert.ok(docker.includes('--from=native-builder /misskey/packages/backend/assets/noctite-build.json'));
 	assert.ok(workflow.includes('NOCTITE_UPDATE_CHANNEL='));
 	assert.doesNotMatch(ui, /docker\.sock|child_process|execSync|spawn\(/);
 });
