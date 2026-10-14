@@ -102,6 +102,10 @@ export class CustomEmojiService implements OnApplicationBootstrap, OnApplication
 	 * manually deleted or customized emoji from being restored at restart.
 	 */
 	public async onApplicationBootstrap(): Promise<void> {
+		// E2E/unit test databases are created by test fixtures without all migrations.
+		// Keep startup provisioning disabled only in that isolated test environment;
+		// production must still fail if its required bootstrap schema is absent.
+		if (process.env.NODE_ENV === 'test') return;
 		const id = await seedNoctemblithEmoji(this.db, this.config.url, () => this.idService.gen());
 		if (id !== null) {
 			this.localEmojisCache.refresh();
