@@ -136,6 +136,13 @@ jobs:
         working-directory: head/packages-private/diagnostics-frontend
         run: pnpm exec playwright install --with-deps --no-shell chromium
 
+      # The base/head harness starts application servers against the same
+      # temporary PostgreSQL service. Both builds require their bootstrap tables.
+      # Migrate only the disposable CI database; never a live application.
+      - name: Prepare browser diagnostics database
+        working-directory: head
+        run: MISSKEY_CONFIG_YML=test.yml pnpm --filter backend migrate
+
       - name: Measure frontend browser metrics
         shell: bash
         working-directory: head
