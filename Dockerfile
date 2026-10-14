@@ -40,6 +40,12 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 
 COPY --link . ./
 
+# Generated at image-build time, never from an untrusted browser-supplied SHA.
+# The runtime serves this non-secret metadata at /noctite-build.json.
+ARG NOCTITE_BUILD_SHA=unknown
+ARG NOCTITE_UPDATE_CHANNEL=noctite/dev
+RUN printf '{"sha":"%s","channel":"%s"}\\n' "$NOCTITE_BUILD_SHA" "$NOCTITE_UPDATE_CHANNEL" > packages/backend/assets/noctite-build.json
+
 RUN pnpm build
 RUN rm -rf .git/
 
@@ -105,6 +111,8 @@ COPY --chown=misskey:misskey --from=native-builder /misskey/packages/misskey-bub
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/built ./packages/backend/built
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/i18n/built ./packages/i18n/built
 COPY --chown=misskey:misskey . ./
+# The final image must contain the exact metadata generated in native-builder.
+COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/assets/noctite-build.json ./packages/backend/assets/noctite-build.json
 
 ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so
 ENV NODE_ENV=production
