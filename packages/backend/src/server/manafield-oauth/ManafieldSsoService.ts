@@ -149,6 +149,16 @@ export class ManafieldSsoService {
   return isSameOriginMutation(request.headers.origin, request.headers['sec-fetch-site'], this.config.url);
  }
 
+ // Limit unauthenticated redirects and per-browser link attempts in shared
+ // Redis rather than process memory, including multi-worker deployments.
+ private async startRateAllowed(request: FastifyRequest): Promise<boolean> {
+  const minute = Math.floor(Date.now() / 60000);
+  const key = 'noctemblith:manafield:start-limit:' + digest(request.ip).slice(0, 32) + ':' + minute;
+  const count = await this.redis.incr(key);
+  if (count === 1) await this.redis.expire(key, 70);
+  return count <= 10;
+ }
+
  private async startFlow(reply: FastifyReply, mode: OAuthMode, userId?: string): Promise<string> {
   if (!this.settings) throw new Error('Manafield SSO is disabled');
   const auth = createManafieldAuthorization(this.settings);
@@ -243,13 +253,15 @@ export class ManafieldSsoService {
    if (!this.originAllowed(request)) return reply.code(403).send({ error: 'forbidden' });
    const user = await this.authenticatedLocalUser(request);
    if (!user) return reply.code(401).send({ error: 'local_login_required' });
+   if (!await this.startRateAllowed(request)) return reply.code(429).send({ error: 'too_many_attempts' });
    const url = await this.startFlow(reply, 'link', user.id);
    return { authorizationUrl: url };
   });
 
-  fastify.get('/auth/manafield/login/start', async (_request, reply) => {
+  fastify.get('/auth/manafield/login/start', async (request, reply) => {
    noStore(reply);
    if (!this.settings) return reply.code(503).send({ error: 'not_configured' });
+   if (!await this.startRateAllowed(request)) return reply.code(429).send({ error: 'too_many_attempts' });
    const url = await this.startFlow(reply, 'login');
    return reply.code(303).header('Location', url).send();
   });
