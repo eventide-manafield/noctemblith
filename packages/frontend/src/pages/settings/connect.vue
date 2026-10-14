@@ -97,13 +97,13 @@ const manafieldMessage = ref('');
 
 async function getManafieldState() {
  try {
-  const status = await fetch('/auth/manafield/status', { cache: 'no-store' });
+  const status = await window.fetch('/auth/manafield/status', { cache: 'no-store' });
   if (!status.ok) return;
   const availability = await status.json() as { enabled?: boolean };
   if (!availability.enabled || !$i) return;
   manafieldEnabled.value = true;
 
-  const linked = await fetch('/auth/manafield/link/status', {
+  const linked = await window.fetch('/auth/manafield/link/status', {
    method: 'POST',
    headers: { Authorization: 'Bearer ' + $i.token, 'Content-Type': 'application/json' },
    credentials: 'same-origin',
@@ -131,7 +131,7 @@ async function startManafieldLink() {
  if (!$i || manafieldBusy.value) return;
  manafieldBusy.value = true;
  try {
-  const response = await fetch('/auth/manafield/link/start', {
+  const response = await window.fetch('/auth/manafield/link/start', {
    method: 'POST',
    credentials: 'same-origin',
    cache: 'no-store',
