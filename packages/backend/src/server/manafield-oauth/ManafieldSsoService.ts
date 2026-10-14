@@ -17,7 +17,6 @@ import { AuthenticateService } from '@/server/api/AuthenticateService.js';
 import {
  createManafieldAuthorization,
  createManafieldTokenRequest,
- matchesManafieldOAuthState,
  parseManafieldIdentity,
  readManafieldOAuthSettings,
  type ManafieldOAuthSettings,
@@ -25,7 +24,6 @@ import {
 import {
  createBrowserProof,
  isSameOriginMutation,
- parseBrowserProof,
  safeRedirectTarget,
 } from './flow.js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -61,13 +59,18 @@ function browserCookie(header: string | undefined, name: string): string | null 
  return validOpaque.test(value) ? value : null;
 }
 
+function appendCookie(reply: FastifyReply, value: string) {
+ const current = reply.getHeader('Set-Cookie');
+ const existing = Array.isArray(current) ? current : typeof current === 'string' ? [current] : [];
+ reply.header('Set-Cookie', [...existing, value]);
+}
 function setProofCookie(reply: FastifyReply, name: string, value: string, ttl: number) {
- reply.header('Set-Cookie', name + '=' + value +
+ appendCookie(reply, name + '=' + value +
   '; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=' + ttl);
 }
 
 function removeProofCookie(reply: FastifyReply, name: string) {
- reply.header('Set-Cookie', name + '=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0');
+ appendCookie(reply, name + '=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0');
 }
 
 async function boundedJson(response: Response): Promise<unknown> {
@@ -262,8 +265,7 @@ export class ManafieldSsoService {
     }
     if (!eq(record.proofHash, digest(cookie)) ||
         !validOpaque.test(record.verifier) ||
-        !['link', 'login'].includes(record.mode) ||
-        !matchesManafieldOAuthState(request.query.state, request.query.state)) {
+        !['link', 'login'].includes(record.mode)) {
      return reply.code(400).send('OAuth browser correlation failed');
     }
     if (request.query.error != null) {
