@@ -106,7 +106,6 @@ describe('Webリソース', () => {
 		{ path: '/cli', type: HTML },
 		{ path: '/flush', type: HTML },
 		{ path: '/robots.txt', type: 'text/plain; charset=UTF-8' },
-		{ path: '/favicon.ico', type: 'image/vnd.microsoft.icon' },
 		{ path: '/opensearch.xml', type: 'application/opensearchdescription+xml' },
 		{ path: '/apple-touch-icon.png', type: 'image/png' },
 		{ path: '/twemoji/2764.svg', type: 'image/svg+xml' },
@@ -121,6 +120,17 @@ describe('Webリソース', () => {
 		// 注意: Webページが200で取得できても、実際のHTMLが正しく表示できるとは限らない
 		//      例えば、 /@xxx/pages/yyy に存在しないIDを渡した場合、HTTPレスポンスではエラーを区別できない
 		//      こういったアサーションはフロントエンドE2EやAPI Endpointのテストで担保する。
+	});
+
+
+	test('/favicon.ico redirects to the branded PNG', async () => {
+		const favicon = await simpleGet('/favicon.ico');
+		assert.strictEqual(favicon.status, 302);
+		assert.strictEqual(favicon.location, '/static-assets/noctemblith-emoji.png');
+
+		const asset = await simpleGet('/static-assets/noctemblith-emoji.png');
+		assert.strictEqual(asset.status, 200);
+		assert.strictEqual(asset.type?.toLowerCase(), 'image/png');
 	});
 
 	describe.each([
