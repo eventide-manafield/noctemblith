@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     name: Build Noctemblith (linux/amd64)
-    if: (startsWith(github.ref, 'refs/heads/noctite/') || startsWith(github.ref, 'refs/heads/noctemblith/'))
+    if: startsWith(github.ref, 'refs/heads/noctemblith/')
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -105,8 +105,8 @@ This Noctemblith fork's Korean product copy addresses **end users and server adm
 ## Noctemblith branding and federation identity (required)
 
 - User-visible project brand: Noctemblith (녹템블리스), gemstone name 그믐석.
-- Keep the existing Noctite development instance (origin, DB, users and media) unchanged and reachable. Never rewrite an established ActivityPub origin in-place.
+- Never rename or rewrite an existing ActivityPub origin in-place; preserve the existing instance and its independent DB/media.
 - New isolated development origin: https://noctemblith-dev.manafield.studio/ with separate Compose project, database, Redis, volumes and routing.
-- Existing noctite_bootstrap_state, noctiteUpdateChannel, legacy emoji and original theme IDs are persistent compatibility identifiers; do not rename or edit already-applied migrations.
+- Already-applied migration scripts are immutable. Historical bootstrap tables belong to old migration history only; current public code uses noctemblithUpdateChannel, introduced by a new rename migration.
 - Do not alter active DNS, Traefik dynamic config or deploy either stack on source merge; operator approval and cutover checks are required.
 - Repo renaming is performed by the repository owner after validated code is pushed; GHCR package publishing is a separately managed namespace.

@@ -117,7 +117,7 @@ const showGuide = ref(false);
 const showDevWarning = ref(false);
 const devRiskAccepted = ref(false);
 const copied = ref(false);
-const devVisibilityKey = `studio.manafield.eventide:noctite-show-dev:${$i?.id ?? 'none'}`;
+const devVisibilityKey = `studio.manafield.eventide:noctemblith-show-dev:${$i?.id ?? 'none'}`;
 const showDev = ref(false);
 const activeChannel = computed(() => !props.compact && showDev.value ? DEV_CHANNEL : subscription.value);
 const pending = computed(() => status.value?.state === 'available' &&
@@ -131,8 +131,8 @@ async function loadSettings(): Promise<void> {
 	loadingSettings.value = true;
 	settingsError.value = '';
 	try {
-		const meta = await misskeyApi('admin/meta') as { noctiteUpdateChannel?: unknown };
-		subscription.value = parseSubscription(meta.noctiteUpdateChannel);
+		const meta = await misskeyApi('admin/meta') as { noctemblithUpdateChannel?: unknown };
+		subscription.value = parseSubscription(meta.noctemblithUpdateChannel);
 		channelDraft.value = subscription.value;
 	} catch {
 		settingsError.value = '구독 설정을 가져오지 못했습니다. 다시 접속하거나 잠시 후 재시도해 주세요.';
@@ -148,12 +148,12 @@ async function saveSubscription(): Promise<void> {
 	settingsError.value = '';
 	try {
 		// The API schema requires administrator authentication and a fixed channel enum.
-		await misskeyApi('admin/update-meta', { noctiteUpdateChannel: channelDraft.value });
+		await misskeyApi('admin/update-meta', { noctemblithUpdateChannel: channelDraft.value });
 		subscription.value = channelDraft.value;
 		showGuide.value = false;
 		showDevWarning.value = false;
 		await refresh();
-		window.dispatchEvent(new Event('noctite-update-channel'));
+		window.dispatchEvent(new Event('noctemblith-update-channel'));
 	} catch {
 		settingsError.value = '구독 채널을 저장하지 못했습니다. 다시 시도해 주세요.';
 	} finally {
@@ -226,15 +226,15 @@ onMounted(() => {
 	if (!props.compact) {
 		try { showDev.value = localStorage.getItem(devVisibilityKey) === 'true'; } catch { /* private mode */ }
 	}
-	window.addEventListener('noctite-update-decision', synchronizeDecision);
+	window.addEventListener('noctemblith-update-decision', synchronizeDecision);
 	window.addEventListener('storage', synchronizeDecision);
-	window.addEventListener('noctite-update-channel', loadSettings);
+	window.addEventListener('noctemblith-update-channel', loadSettings);
 	void loadSettings();
 });
 onBeforeUnmount(() => {
-	window.removeEventListener('noctite-update-decision', synchronizeDecision);
+	window.removeEventListener('noctemblith-update-decision', synchronizeDecision);
 	window.removeEventListener('storage', synchronizeDecision);
-	window.removeEventListener('noctite-update-channel', loadSettings);
+	window.removeEventListener('noctemblith-update-channel', loadSettings);
 });
 </script>
 
