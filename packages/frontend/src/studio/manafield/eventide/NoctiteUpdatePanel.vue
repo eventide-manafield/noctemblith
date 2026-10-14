@@ -7,10 +7,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div class="_gaps_s">
 		<div :class="$style.heading"><i class="ti ti-package"></i> <b>Noctite 업데이트</b></div>
 		<template v-if="loading">
-			<p class="_gaps_s">새 빌드를 확인하는 중이야…</p>
+			<p class="_gaps_s">새 빌드를 확인하는 중입니다…</p>
 		</template>
 		<template v-else-if="status?.state === 'available' && pending">
-			<p>새로운 검증 빌드가 준비되었어. 적용 여부는 서버 관리자가 결정할 수 있어.</p>
+			<p>새로운 검증 빌드가 준비되었습니다. 업데이트 적용 여부는 서버 관리자가 결정할 수 있습니다.</p>
 			<div :class="$style.versions">
 				<span>현재: <code>{{ status.current.sha.slice(0, 10) }}</code></span>
 				<span>후보: <code>{{ status.candidate.sha.slice(0, 10) }}</code></span>
@@ -23,8 +23,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div v-if="showGuide" :class="$style.guide" class="_gaps_s">
 				<b>업데이트 적용 안내 (수동 배포)</b>
-				<p>현재 v0.1에는 서버 업데이트 에이전트가 없어. 이 버튼은 배포 절차를 보여주며 서버나 DB를 직접 변경하지 않아.</p>
-				<p>먼저 <a :href="status.candidate.workflowUrl" target="_blank" rel="noopener noreferrer" class="_link">GitHub 빌드 실행 결과</a>에서 이미지 digest를 확인하고, DB 백업 후 앱 컨테이너만 교체해줘.</p>
+				<p>현재 v0.1에서는 자동 업데이트를 지원하지 않습니다. 이 버튼은 수동 배포 절차를 안내하며 서버나 데이터베이스를 직접 변경하지 않습니다.</p>
+				<p>먼저 <a :href="status.candidate.workflowUrl" target="_blank" rel="noopener noreferrer" class="_link">GitHub 빌드 실행 결과</a>에서 이미지 digest를 확인한 뒤, 데이터베이스를 백업하고 앱 컨테이너만 교체해 주세요.</p>
 				<div :class="$style.command"><code>{{ imageTag }}</code></div>
 				<div :class="$style.actions">
 					<MkButton @click="copyTag"><i class="ti ti-copy"></i> 이미지 태그 복사</MkButton>
@@ -32,11 +32,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<i class="ti ti-external-link"></i> 빌드 목록 보기
 					</MkButton>
 				</div>
-				<p v-if="copied">태그 복사 완료. 실제 배포에는 Actions에서 확인한 digest를 사용해야 해.</p>
+				<p v-if="copied">이미지 태그를 복사했습니다. 실제 배포에는 GitHub Actions에서 확인한 digest를 사용해야 합니다.</p>
 			</div>
 		</template>
 		<template v-else-if="!compact">
-			<p>{{ status?.message ?? '업데이트 정보를 확인하지 못했어.' }}</p>
+			<p>{{ status?.message ?? '업데이트 정보를 확인하지 못했습니다.' }}</p>
 			<p v-if="status?.current">현재 채널: <code>{{ status.current.channel }}</code> · 커밋: <code>{{ status.current.sha.slice(0, 10) }}</code></p>
 		</template>
 		<div v-if="!compact" :class="$style.actions">
