@@ -95,7 +95,7 @@ const username = ref(props.initialUsername ?? '');
 const manafieldAvailable = ref(false);
 onMounted(async () => {
 	try {
-		const response = await fetch('/auth/manafield/status', { cache: 'no-store' });
+		const response = await window.fetch('/auth/manafield/status', { cache: 'no-store' });
 		if (!response.ok) return;
 		const data = await response.json() as { enabled?: boolean };
 		manafieldAvailable.value = data.enabled === true;
