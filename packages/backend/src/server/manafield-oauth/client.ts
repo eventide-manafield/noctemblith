@@ -41,9 +41,9 @@ export function readManafieldOAuthSettings(
 	env: Record<string, string | undefined>,
 	instancePublicUrl: string,
 ): ManafieldOAuthSettings | null {
-	const accountOrigin = env.NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN ?? env.NOCTITE_MANAFIELD_ACCOUNT_ORIGIN;
-	const clientId = env.NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID ?? env.NOCTITE_MANAFIELD_OAUTH_CLIENT_ID;
-	const callbackUrl = env.NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL ?? env.NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL;
+	const accountOrigin = env.NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN;
+	const clientId = env.NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID;
+	const callbackUrl = env.NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL;
 	if (!accountOrigin && !clientId && !callbackUrl) return null;
 	if (!accountOrigin || !clientId || !callbackUrl || !clientIdPattern.test(clientId)) {
 		throw new Error('Incomplete Manafield OAuth configuration');

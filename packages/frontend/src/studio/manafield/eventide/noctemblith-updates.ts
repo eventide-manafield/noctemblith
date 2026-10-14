@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Noctemblith's administrator update viewer. This deliberately NEVER executes
@@ -20,7 +20,7 @@ export function parseSubscription(value: unknown): UpdateChannel {
 export const WORKFLOW_PAGE = `https://github.com/${REPOSITORY}/actions/workflows/${UPDATE_WORKFLOW}`;
 
 const SHA_RE = /^[0-9a-f]{40}$/i;
-const CHANNEL_RE = /^(?:noctemblith|noctite)\/[a-z0-9._/-]+$/i;
+const CHANNEL_RE = /^noctemblith\/[a-z0-9._/-]+$/i;
 const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type BuildMetadata = {
@@ -88,7 +88,7 @@ export function chooseUpdate(decision: UpdateDecision, sha: string, action: 'ski
 
 export function readDecision(adminId: string): UpdateDecision {
 	try {
-		const raw = localStorage.getItem(`studio.manafield.eventide:noctite-update:${adminId}`);
+		const raw = localStorage.getItem(`studio.manafield.eventide:noctemblith-update:${adminId}`);
 		if (!raw) return {};
 		const parsed: unknown = JSON.parse(raw);
 		return parsed && typeof parsed === 'object' ? parsed as UpdateDecision : {};
@@ -98,9 +98,9 @@ export function readDecision(adminId: string): UpdateDecision {
 }
 
 export function saveDecision(adminId: string, decision: UpdateDecision): void {
-	localStorage.setItem(`studio.manafield.eventide:noctite-update:${adminId}`, JSON.stringify(decision));
+	localStorage.setItem(`studio.manafield.eventide:noctemblith-update:${adminId}`, JSON.stringify(decision));
 	// Synchronize the compact admin notice and the full update center in this tab.
-	if (typeof window !== 'undefined') window.dispatchEvent(new Event('noctite-update-decision'));
+	if (typeof window !== 'undefined') window.dispatchEvent(new Event('noctemblith-update-decision'));
 }
 
 async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
@@ -116,7 +116,7 @@ async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
 export async function checkForUpdates(channel: UpdateChannel = RELEASE_CHANNEL): Promise<UpdateCheck> {
 	let current: BuildMetadata | null = null;
 	try {
-		const metadata = await fetchJson('/noctemblith-build.json', true).catch(() => fetchJson('/noctite-build.json', true).catch(() => null));
+		const metadata = await fetchJson('/noctemblith-build.json', true).catch(() => null);
 		if (!isBuildMetadata(metadata)) {
 			return { state: 'untracked', current: null, message: '현재 실행 중인 Noctemblith 이미지의 빌드 정보를 확인할 수 없습니다. 새로운 GHCR 이미지를 배포한 뒤 다시 확인해 주세요.' };
 		}

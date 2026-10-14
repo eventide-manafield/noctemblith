@@ -134,7 +134,7 @@ test('old images without build metadata are shown as untracked, without public G
 	};
 	try {
 		assert.equal((await checkForUpdates()).state, 'untracked');
-		assert.deepEqual(urls, ['/noctemblith-build.json', '/noctite-build.json']);
+		assert.deepEqual(urls, ['/noctemblith-build.json']);
 	} finally {
 		globalThis.fetch = original;
 	}
@@ -159,7 +159,7 @@ test('UI buttons are real controls but do not grant Docker or host execution pri
 
 test('stamped image build metadata is strict JSON and is never cached by the app', () => {
 	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
-	const match = docker.match(/^RUN (printf .*?) > packages\/backend\/assets\/noctemblith-build\.json \\$/m);
+	const match = docker.match(/^RUN (printf .*?) > packages\/backend\/assets\/noctemblith-build\.json$/m);
 	assert.ok(match, 'Dockerfile must stamp metadata during image build');
 	const generated = execFileSync('sh', ['-c', match[1]], {
 		encoding: 'utf8',
@@ -207,38 +207,34 @@ test('server-level subscription and dev warning are wired in UI and backend', ()
 	const meta = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/meta.ts', import.meta.url), 'utf8');
 	const update = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/update-meta.ts', import.meta.url), 'utf8');
 	const entity = readFileSync(new URL('../packages/backend/src/models/Meta.ts', import.meta.url), 'utf8');
-	const migration = readFileSync(new URL('../packages/backend/migration/1792000000000-NoctiteUpdateSubscription.js', import.meta.url), 'utf8');
+	const migration = readFileSync(new URL('../packages/backend/migration/1792000000000-NoctemblithUpdateSubscription.js', import.meta.url), 'utf8');
 	assert.match(panel, /misskeyApi\('admin\/meta'\)/);
 	assert.match(panel, /misskeyApi\('admin\/update-meta'/);
 	assert.match(panel, /v-model="showDev"/);
 	assert.match(panel, /status\.value\.candidate\.channel === DEV_CHANNEL/);
 	assert.match(panel, /:disabled="!devRiskAccepted"/);
 	assert.match(panel, /개발 버전의 안정성과 이전 버전으로의 복구는 보장되지 않습니다/);
-	assert.match(meta, /noctiteUpdateChannel: instance\.noctiteUpdateChannel/);
-	assert.match(update, /set\.noctiteUpdateChannel = ps\.noctiteUpdateChannel/);
+	assert.match(meta, /noctemblithUpdateChannel: instance\.noctemblithUpdateChannel/);
+	assert.match(update, /set\.noctemblithUpdateChannel = ps\.noctemblithUpdateChannel/);
 	assert.match(entity, /default: 'noctemblith\/release\/latest'/);
-	assert.match(migration, /ALTER TABLE "meta" ADD "noctiteUpdateChannel"/);
+	assert.match(migration, /ALTER TABLE.*noctemblithUpdateChannel.*character varying/);
 	assert.doesNotMatch(panel, /docker\.sock|child_process|execSync|spawn\(/);
 });
 
-test('brand identity adds new metadata endpoint and keeps legacy aliases', () => {
+test('Noctemblith endpoints and metadata do not expose the retired name', () => {
 	const web = readFileSync(new URL('../packages/backend/src/server/web/ClientServerService.ts', import.meta.url), 'utf8');
 	assert.match(web, /fastify\.get\('\/noctemblith-build\.json'/);
-	assert.match(web, /fastify\.get\('\/noctite-build\.json'/);
 	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
 	assert.match(docker, /assets\/noctemblith-build\.json/);
-	assert.match(docker, /assets\/noctite-build\.json/);
 	const router = readFileSync(new URL('../packages/frontend/src/router.definition.ts', import.meta.url), 'utf8');
-	assert.match(router, /path: '\/noctite-updates'/);
+	assert.match(router, /path: '\/noctemblith-updates'/);
 });
 test('new development domain has a separate Compose/Traefik identity', () => {
 	const compose = readFileSync(new URL('../deploy/manafield/compose.noctemblith-dev.candidate.yml', import.meta.url), 'utf8');
-	const legacy = readFileSync(new URL('../deploy/manafield/compose.dev.candidate.yml', import.meta.url), 'utf8');
 	const router = readFileSync(new URL('../deploy/manafield/traefik.noctemblith-dev.candidate.yml', import.meta.url), 'utf8');
 	assert.match(compose, /name: noctemblith-dev/);
 	assert.match(compose, /noctemblith-postgres:/);
 	assert.match(compose, /noctemblith-redis:/);
 	assert.match(compose, /noctemblith-media:/);
-	assert.match(legacy, /name: noctite-dev/);
 	assert.match(router, /noctemblith-dev\.manafield\.studio/);
 });

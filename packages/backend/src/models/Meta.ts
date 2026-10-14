@@ -751,7 +751,7 @@ export class MiMeta {
 		length: 64,
 		default: 'noctemblith/release/latest',
 	})
-	public noctiteUpdateChannel: 'noctemblith/release/latest' | 'noctemblith/dev';
+	public noctemblithUpdateChannel: 'noctemblith/release/latest' | 'noctemblith/dev';
 
 	@Column('jsonb', {
 		default: { },
