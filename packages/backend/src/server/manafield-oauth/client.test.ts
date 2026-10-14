@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
@@ -13,38 +13,38 @@ import {
 	readManafieldOAuthSettings,
 } from './client.js';
 
-const noctiteUrl = 'https://noctite.manafield.studio/';
+const noctemblithUrl = 'https://noctemblith.manafield.studio/';
 const complete = {
-	NOCTITE_MANAFIELD_ACCOUNT_ORIGIN: 'https://manafield.studio',
-	NOCTITE_MANAFIELD_OAUTH_CLIENT_ID: 'noctite-manafield-integration',
-	NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctite.manafield.studio/auth/manafield/callback',
+	NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN: 'https://manafield.studio',
+	NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID: 'noctemblith-manafield-integration',
+	NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctemblith.manafield.studio/auth/manafield/callback',
 };
 
 describe('Manafield Account OAuth2 client foundation', () => {
-	it('does not enable SSO for an unconfigured standalone Noctite', () => {
-		expect(readManafieldOAuthSettings({}, noctiteUrl)).toBeNull();
+	it('does not enable SSO for an unconfigured standalone Noctemblith', () => {
+		expect(readManafieldOAuthSettings({}, noctemblithUrl)).toBeNull();
 	});
 
 	it('rejects partial, insecure or external callback configurations', () => {
 		expect(() => readManafieldOAuthSettings({
-			NOCTITE_MANAFIELD_OAUTH_CLIENT_ID: complete.NOCTITE_MANAFIELD_OAUTH_CLIENT_ID,
-		}, noctiteUrl)).toThrow();
+			NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID: complete.NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID,
+		}, noctemblithUrl)).toThrow();
 
 		for (const changes of [
-			{ NOCTITE_MANAFIELD_ACCOUNT_ORIGIN: 'http://manafield.studio' },
-			{ NOCTITE_MANAFIELD_ACCOUNT_ORIGIN: 'https://manafield.studio/account' },
-			{ NOCTITE_MANAFIELD_ACCOUNT_ORIGIN: 'https://user:pass@manafield.studio' },
-			{ NOCTITE_MANAFIELD_OAUTH_CLIENT_ID: 'a value with spaces' },
-			{ NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL: 'https://evil.example/auth/manafield/callback' },
-			{ NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctite.manafield.studio/auth/manafield/callback?next=evil' },
-			{ NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctite.manafield.studio/api/signin' },
+			{ NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN: 'http://manafield.studio' },
+			{ NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN: 'https://manafield.studio/account' },
+			{ NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN: 'https://user:pass@manafield.studio' },
+			{ NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID: 'a value with spaces' },
+			{ NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL: 'https://evil.example/auth/manafield/callback' },
+			{ NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctemblith.manafield.studio/auth/manafield/callback?next=evil' },
+			{ NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctemblith.manafield.studio/api/signin' },
 		]) {
-			expect(() => readManafieldOAuthSettings({ ...complete, ...changes }, noctiteUrl)).toThrow();
+			expect(() => readManafieldOAuthSettings({ ...complete, ...changes }, noctemblithUrl)).toThrow();
 		}
 	});
 
 	it('creates a S256 PKCE authorization request with fresh state', () => {
-		const settings = readManafieldOAuthSettings(complete, noctiteUrl)!;
+		const settings = readManafieldOAuthSettings(complete, noctemblithUrl)!;
 		const first = createManafieldAuthorization(settings);
 		const second = createManafieldAuthorization(settings);
 		expect(first.state).toMatch(/^[\w-]{43}$/);
@@ -65,7 +65,7 @@ describe('Manafield Account OAuth2 client foundation', () => {
 	});
 
 	it('compares state strictly and rejects malformed callback state', () => {
-		const settings = readManafieldOAuthSettings(complete, noctiteUrl)!;
+		const settings = readManafieldOAuthSettings(complete, noctemblithUrl)!;
 		const a = createManafieldAuthorization(settings).state;
 		const b = createManafieldAuthorization(settings).state;
 		expect(matchesManafieldOAuthState(a, a)).toBe(true);
@@ -75,7 +75,7 @@ describe('Manafield Account OAuth2 client foundation', () => {
 	});
 
 	it('builds an exact authorization-code exchange without passwords', () => {
-		const settings = readManafieldOAuthSettings(complete, noctiteUrl)!;
+		const settings = readManafieldOAuthSettings(complete, noctemblithUrl)!;
 		const { verifier } = createManafieldAuthorization(settings);
 		const code = 'a'.repeat(43);
 		const request = createManafieldTokenRequest(settings, code, verifier);

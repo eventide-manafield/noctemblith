@@ -6,7 +6,6 @@
 import { Inject, Injectable, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import * as Redis from 'ioredis';
 import { In, IsNull } from 'typeorm';
-import type { DataSource } from 'typeorm';
 import { EmojiEntityService } from '@/core/entities/EmojiEntityService.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { IdService } from '@/core/IdService.js';
@@ -16,11 +15,12 @@ import { bindThis } from '@/decorators.js';
 import { DI } from '@/di-symbols.js';
 import { MemoryKVCache, RedisSingleCache } from '@/misc/cache.js';
 import { sqlLikeEscape } from '@/misc/sql-like-escape.js';
-import { seedNoctiteEmoji } from '@/core/noctite-default-emoji.js';
+import { seedNoctemblithEmoji } from '@/core/noctemblith-default-emoji.js';
 import type { Config } from '@/config.js';
 import type { EmojisRepository, MiRole, MiUser } from '@/models/_.js';
 import type { MiEmoji } from '@/models/Emoji.js';
 import type { Serialized } from '@/types.js';
+import type { DataSource } from 'typeorm';
 
 const parseEmojiStrRegexp = /^([-\w]+)(?:@([\w.-]+))?$/;
 
@@ -96,14 +96,13 @@ export class CustomEmojiService implements OnApplicationBootstrap, OnApplication
 		});
 	}
 
-
 	/**
-	 * Install the namesake :noctite: emoji only on the first run of this
+	 * Install the namesake :noctemblith: emoji only on the first run of this
 	 * branded release, after migrations. A persistent DB marker prevents a
 	 * manually deleted or customized emoji from being restored at restart.
 	 */
 	public async onApplicationBootstrap(): Promise<void> {
-		const id = await seedNoctiteEmoji(this.db, this.config.url, () => this.idService.gen());
+		const id = await seedNoctemblithEmoji(this.db, this.config.url, () => this.idService.gen());
 		if (id !== null) {
 			this.localEmojisCache.refresh();
 			this.globalEventService.publishBroadcastStream('emojiAdded', {
@@ -164,16 +163,16 @@ export class CustomEmojiService implements OnApplicationBootstrap, OnApplication
 	public async update(data: (
 		{ id: MiEmoji['id'], name?: string; } | { name: string; id?: MiEmoji['id'], }
 		) & {
-		originalUrl?: string;
-		publicUrl?: string;
-		fileType?: string;
-		category?: string | null;
-		aliases?: string[];
-		license?: string | null;
-		isSensitive?: boolean;
-		localOnly?: boolean;
-		roleIdsThatCanBeUsedThisEmojiAsReaction?: MiRole['id'][];
-	}, moderator?: MiUser): Promise<
+			originalUrl?: string;
+			publicUrl?: string;
+			fileType?: string;
+			category?: string | null;
+			aliases?: string[];
+			license?: string | null;
+			isSensitive?: boolean;
+			localOnly?: boolean;
+			roleIdsThatCanBeUsedThisEmojiAsReaction?: MiRole['id'][];
+		}, moderator?: MiUser): Promise<
 		null
 		| 'NO_SUCH_EMOJI'
 		| 'SAME_NAME_EMOJI_EXISTS'

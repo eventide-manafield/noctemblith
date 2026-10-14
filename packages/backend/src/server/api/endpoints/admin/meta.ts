@@ -622,7 +622,7 @@ export const meta = {
 			},
 			noctiteUpdateChannel: {
 				type: 'string',
-				enum: ['noctite/release/latest', 'noctite/dev'],
+				enum: ['noctemblith/release/latest', 'noctemblith/dev'],
 				optional: false, nullable: false,
 			},
 		},

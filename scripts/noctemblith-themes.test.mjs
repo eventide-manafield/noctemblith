@@ -1,9 +1,9 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Dependency-free checks for the fork's default theme and contrast choices.
- * Run: node --test scripts/noctite-themes.test.mjs
+ * Run: node --test scripts/noctemblith-themes.test.mjs
  */
 
 import { readFileSync } from 'node:fs';
@@ -11,7 +11,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const theme = mode => read('packages/frontend-shared/themes/' + mode + '-noctite.json5');
+const theme = mode => read('packages/frontend-shared/themes/' + mode + '-noctemblith.json5');
 
 function color(s, key) {
 	const found = s.match(new RegExp('\\b' + key + ":\\s*'(#(?:[0-9a-fA-F]{6}))'"));
@@ -28,10 +28,10 @@ function contrast(a, b) {
 	return (l[0] + 0.05) / (l[1] + 0.05);
 }
 
-test('Noctite Dusk keeps the agreed twilight purple and sunset highlights', () => {
+test('Noctemblith Dusk keeps the agreed twilight purple and sunset highlights', () => {
 	const dark = theme('d');
 	assert.match(dark, /base: 'dark'/);
-	assert.match(dark, /name: 'Noctite Dusk'/);
+	assert.match(dark, /name: 'Noctemblith Dusk'/);
 	assert.equal(color(dark, 'bg'), '#17131F');
 	assert.equal(color(dark, 'panel'), '#211A2B');
 	assert.equal(color(dark, 'accent'), '#7A35B6');
@@ -41,10 +41,10 @@ test('Noctite Dusk keeps the agreed twilight purple and sunset highlights', () =
 	assert.ok(contrast('#FFFFFF', color(dark, 'accent')) >= 4.5);
 });
 
-test('Noctite Dawn draws the default light foundation from Manafield Home', () => {
+test('Noctemblith Dawn draws the default light foundation from Manafield Home', () => {
 	const light = theme('l');
 	assert.match(light, /base: 'light'/);
-	assert.match(light, /name: 'Noctite Dawn'/);
+	assert.match(light, /name: 'Noctemblith Dawn'/);
 	assert.equal(color(light, 'bg'), '#F7F4EF');
 	assert.equal(color(light, 'fg'), '#1F1B24');
 	assert.equal(color(light, 'accent'), '#7B4FD6');
@@ -56,8 +56,8 @@ test('Noctite Dawn draws the default light foundation from Manafield Home', () =
 
 test('the new themes are built in, not forced onto personal or instance themes', () => {
 	const builtin = read('packages/frontend-shared/js/theme.ts');
-	assert.match(builtin, /'d-noctite'/);
-	assert.match(builtin, /'l-noctite'/);
+	assert.match(builtin, /'d-noctemblith'/);
+	assert.match(builtin, /'l-noctemblith'/);
 
 	for (const path of [
 		'packages/frontend/src/boot/common.ts',
@@ -66,8 +66,8 @@ test('the new themes are built in, not forced onto personal or instance themes',
 		'packages/frontend-embed/src/boot.ts',
 	]) {
 		const file = read(path);
-		assert.match(file, /themes\/d-noctite\.json5/);
-		assert.match(file, /themes\/l-noctite\.json5/);
+		assert.match(file, /themes\/d-noctemblith\.json5/);
+		assert.match(file, /themes\/l-noctemblith\.json5/);
 	}
 	const common = read('packages/frontend/src/boot/common.ts');
 	assert.match(common, /prefer\.s\.darkTheme \?\? defaultDarkTheme/);

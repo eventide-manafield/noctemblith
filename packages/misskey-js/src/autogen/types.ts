@@ -9575,7 +9575,7 @@ export interface operations {
                         remoteNotesCleaningMaxProcessingDurationInMinutes: number;
                         showRoleBadgesOfRemoteUsers: boolean;
                         /** @enum {string} */
-                        noctiteUpdateChannel: 'noctite/release/latest' | 'noctite/dev';
+                        noctiteUpdateChannel: 'noctemblith/release/latest' | 'noctemblith/dev';
                     };
                 };
             };
@@ -13097,7 +13097,7 @@ export interface operations {
                     remoteNotesCleaningMaxProcessingDurationInMinutes?: number;
                     showRoleBadgesOfRemoteUsers?: boolean;
                     /** @enum {string} */
-                    noctiteUpdateChannel?: 'noctite/release/latest' | 'noctite/dev';
+                    noctiteUpdateChannel?: 'noctemblith/release/latest' | 'noctemblith/dev';
                 };
             };
         };

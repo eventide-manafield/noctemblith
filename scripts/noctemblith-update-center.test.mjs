@@ -1,9 +1,9 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Run with Node 22+:
- *   node --experimental-strip-types --test scripts/noctite-update-center.test.mjs
+ *   node --experimental-strip-types --test scripts/noctemblith-update-center.test.mjs
  */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -20,15 +20,15 @@ import {
 	shouldNotify,
 	readDecision,
 	saveDecision,
-} from '../packages/frontend/src/studio/manafield/eventide/noctite-updates.ts';
+} from '../packages/frontend/src/studio/manafield/eventide/noctemblith-updates.ts';
 
 const oldSha = 'a'.repeat(40);
 const nextSha = 'b'.repeat(40);
-const makeRun = (sha, branch = 'noctite/dev') => ({
+const makeRun = (sha, branch = 'noctemblith/dev') => ({
 	head_sha: sha,
 	head_branch: branch,
 	conclusion: 'success',
-	html_url: 'https://github.com/eventide-manafield/noctite/actions/runs/1234',
+	html_url: 'https://github.com/eventide-manafield/noctemblith/actions/runs/1234',
 });
 const goodResponse = data => ({ ok: true, json: async () => data });
 
@@ -36,18 +36,18 @@ test('verified release results exclude other channels and malformed builds', () 
 	const result = parseLatestSuccessfulRun({
 		workflow_runs: [
 			makeRun('invalid'),
-			makeRun(nextSha, 'noctite/1.0.0'),
+			makeRun(nextSha, 'noctemblith/1.0.0'),
 			makeRun(nextSha),
 		],
-	}, 'noctite/dev');
+	}, 'noctemblith/dev');
 	assert.equal(result.sha, nextSha);
-	assert.equal(result.channel, 'noctite/dev');
-	assert.equal(parseLatestSuccessfulRun({ workflow_runs: [] }, 'noctite/dev'), null);
+	assert.equal(result.channel, 'noctemblith/dev');
+	assert.equal(parseLatestSuccessfulRun({ workflow_runs: [] }, 'noctemblith/dev'), null);
 });
 
-test('current build metadata must include a full SHA and Noctite channel', () => {
-	assert.equal(isBuildMetadata({ sha: oldSha, channel: 'noctite/dev' }), true);
-	assert.equal(isBuildMetadata({ sha: 'unknown', channel: 'noctite/dev' }), false);
+test('current build metadata must include a full SHA and Noctemblith channel', () => {
+	assert.equal(isBuildMetadata({ sha: oldSha, channel: 'noctemblith/dev' }), true);
+	assert.equal(isBuildMetadata({ sha: 'unknown', channel: 'noctemblith/dev' }), false);
 	assert.equal(isBuildMetadata({ sha: oldSha, channel: 'develop' }), false);
 });
 
@@ -58,7 +58,7 @@ test('an update only appears when a successful channel build is ahead of install
 		urls.push(String(url));
 		if (urls.length === 1) {
 			assert.equal(options.credentials, 'same-origin');
-			return goodResponse({ sha: oldSha, channel: 'noctite/dev' });
+			return goodResponse({ sha: oldSha, channel: 'noctemblith/dev' });
 		}
 		if (urls.length === 2) {
 			assert.equal(options.credentials, 'omit');
@@ -70,7 +70,7 @@ test('an update only appears when a successful channel build is ahead of install
 		const result = await checkForUpdates(DEV_CHANNEL);
 		assert.equal(result.state, 'available');
 		assert.equal(result.candidate.sha, nextSha);
-		assert.ok(urls[1].includes('branch=noctite%2Fdev'));
+		assert.ok(urls[1].includes('branch=noctemblith%2Fdev'));
 		assert.ok(urls[2].endsWith(oldSha + '...' + nextSha));
 	} finally {
 		globalThis.fetch = originalFetch;
@@ -84,7 +84,7 @@ test('older, diverged and equal build results never trigger an update', async ()
 			let count = 0;
 			globalThis.fetch = async () => {
 				count++;
-				if (count === 1) return goodResponse({ sha: oldSha, channel: 'noctite/dev' });
+				if (count === 1) return goodResponse({ sha: oldSha, channel: 'noctemblith/dev' });
 				if (count === 2) return goodResponse({ workflow_runs: [makeRun(nextSha)] });
 				return goodResponse({ status: comparison });
 			};
@@ -96,7 +96,7 @@ test('older, diverged and equal build results never trigger an update', async ()
 });
 
 test('skip and snooze are separate decisions tied to an exact candidate SHA', () => {
-	const candidate = { sha: nextSha, channel: 'noctite/dev', workflowUrl: makeRun(nextSha).html_url };
+	const candidate = { sha: nextSha, channel: 'noctemblith/dev', workflowUrl: makeRun(nextSha).html_url };
 	const now = 1234567000;
 	const skipped = chooseUpdate({}, nextSha, 'skip', now);
 	assert.equal(shouldNotify(candidate, skipped, now), false);
@@ -134,14 +134,14 @@ test('old images without build metadata are shown as untracked, without public G
 	};
 	try {
 		assert.equal((await checkForUpdates()).state, 'untracked');
-		assert.deepEqual(urls, ['/noctite-build.json']);
+		assert.deepEqual(urls, ['/noctemblith-build.json', '/noctite-build.json']);
 	} finally {
 		globalThis.fetch = original;
 	}
 });
 
 test('UI buttons are real controls but do not grant Docker or host execution privileges', () => {
-	const ui = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctiteUpdatePanel.vue', import.meta.url), 'utf8');
+	const ui = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctemblithUpdatePanel.vue', import.meta.url), 'utf8');
 	const nav = readFileSync(new URL('../packages/frontend/src/pages/admin/index.vue', import.meta.url), 'utf8');
 	const router = readFileSync(new URL('../packages/frontend/src/router.definition.ts', import.meta.url), 'utf8');
 	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
@@ -149,31 +149,31 @@ test('UI buttons are real controls but do not grant Docker or host execution pri
 
 	for (const callback of ['@click="requestGuide"', '@click="skip"', '@click="snooze"']) assert.ok(ui.includes(callback));
 	assert.ok(ui.includes('수동 배포'));
-	assert.ok(nav.includes('NoctiteUpdatePanel'));
-	assert.ok(router.includes('/noctite-updates'));
-	assert.ok(docker.includes('NOCTITE_BUILD_SHA'));
-	assert.ok(docker.includes('--from=native-builder /misskey/packages/backend/assets/noctite-build.json'));
-	assert.ok(workflow.includes('NOCTITE_UPDATE_CHANNEL='));
+	assert.ok(nav.includes('NoctemblithUpdatePanel'));
+	assert.ok(router.includes('/noctemblith-updates'));
+	assert.ok(docker.includes('NOCTEMBLITH_BUILD_SHA'));
+	assert.ok(docker.includes('--from=native-builder /misskey/packages/backend/assets/noctemblith-build.json'));
+	assert.ok(workflow.includes('NOCTEMBLITH_UPDATE_CHANNEL='));
 	assert.doesNotMatch(ui, /docker\.sock|child_process|execSync|spawn\(/);
 });
 
 test('stamped image build metadata is strict JSON and is never cached by the app', () => {
 	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
-	const match = docker.match(/^RUN (printf .*?) > packages\/backend\/assets\/noctite-build\.json$/m);
+	const match = docker.match(/^RUN (printf .*?) > packages\/backend\/assets\/noctemblith-build\.json \\$/m);
 	assert.ok(match, 'Dockerfile must stamp metadata during image build');
 	const generated = execFileSync('sh', ['-c', match[1]], {
 		encoding: 'utf8',
-		env: { ...process.env, NOCTITE_BUILD_SHA: oldSha, NOCTITE_UPDATE_CHANNEL: 'noctite/dev' },
+		env: { ...process.env, NOCTEMBLITH_BUILD_SHA: oldSha, NOCTEMBLITH_UPDATE_CHANNEL: 'noctemblith/dev' },
 	});
-	assert.deepEqual(JSON.parse(generated), { sha: oldSha, channel: 'noctite/dev' });
+	assert.deepEqual(JSON.parse(generated), { sha: oldSha, channel: 'noctemblith/dev' });
 	const server = readFileSync(new URL('../packages/backend/src/server/web/ClientServerService.ts', import.meta.url), 'utf8');
 	assert.match(server, /reply\.header\('Cache-Control', 'no-store'\)/);
-	assert.match(server, /reply\.sendFile\('\/noctite-build\.json', this\.staticAssets, \{ cacheControl: false \}\)/);
+	assert.match(server, /reply\.sendFile\('\/noctemblith-build\.json', this\.staticAssets, \{ cacheControl: false \}\)/);
 });
 
 test('update center Korean copy uses polite user-facing language', () => {
-	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctiteUpdatePanel.vue', import.meta.url), 'utf8');
-	const messages = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/noctite-updates.ts', import.meta.url), 'utf8');
+	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctemblithUpdatePanel.vue', import.meta.url), 'utf8');
+	const messages = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/noctemblith-updates.ts', import.meta.url), 'utf8');
 	for (const source of [panel, messages]) {
 		assert.doesNotMatch(source, /(?:중이야|준비되었어|할 수 있어|확인해줘|교체해줘|찾지 못했어|사용 중이야|가져오지 못했어|변경하지 않아|사용해야 해|정보를 확인할 수 없어)/);
 	}
@@ -183,7 +183,7 @@ test('update center Korean copy uses polite user-facing language', () => {
 
 test('release subscription is default, development requires explicit selection', async () => {
 	assert.equal(parseSubscription(undefined), RELEASE_CHANNEL);
-	assert.equal(parseSubscription('noctite/other'), RELEASE_CHANNEL);
+	assert.equal(parseSubscription('noctemblith/other'), RELEASE_CHANNEL);
 	assert.equal(parseSubscription(DEV_CHANNEL), DEV_CHANNEL);
 	const originalFetch = globalThis.fetch;
 	const urls = [];
@@ -195,7 +195,7 @@ test('release subscription is default, development requires explicit selection',
 	try {
 		const result = await checkForUpdates();
 		assert.equal(result.state, 'current');
-		assert.ok(urls[1].includes('branch=noctite%2Frelease%2Flatest'));
+		assert.ok(urls[1].includes('branch=noctemblith%2Frelease%2Flatest'));
 		assert.equal(urls.length, 2, 'default subscription must not query dev branch');
 	} finally {
 		globalThis.fetch = originalFetch;
@@ -203,7 +203,7 @@ test('release subscription is default, development requires explicit selection',
 });
 
 test('server-level subscription and dev warning are wired in UI and backend', () => {
-	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctiteUpdatePanel.vue', import.meta.url), 'utf8');
+	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctemblithUpdatePanel.vue', import.meta.url), 'utf8');
 	const meta = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/meta.ts', import.meta.url), 'utf8');
 	const update = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/update-meta.ts', import.meta.url), 'utf8');
 	const entity = readFileSync(new URL('../packages/backend/src/models/Meta.ts', import.meta.url), 'utf8');
@@ -216,7 +216,29 @@ test('server-level subscription and dev warning are wired in UI and backend', ()
 	assert.match(panel, /개발 버전의 안정성과 이전 버전으로의 복구는 보장되지 않습니다/);
 	assert.match(meta, /noctiteUpdateChannel: instance\.noctiteUpdateChannel/);
 	assert.match(update, /set\.noctiteUpdateChannel = ps\.noctiteUpdateChannel/);
-	assert.match(entity, /default: 'noctite\/release\/latest'/);
+	assert.match(entity, /default: 'noctemblith\/release\/latest'/);
 	assert.match(migration, /ALTER TABLE "meta" ADD "noctiteUpdateChannel"/);
 	assert.doesNotMatch(panel, /docker\.sock|child_process|execSync|spawn\(/);
+});
+
+test('brand identity adds new metadata endpoint and keeps legacy aliases', () => {
+	const web = readFileSync(new URL('../packages/backend/src/server/web/ClientServerService.ts', import.meta.url), 'utf8');
+	assert.match(web, /fastify\.get\('\/noctemblith-build\.json'/);
+	assert.match(web, /fastify\.get\('\/noctite-build\.json'/);
+	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
+	assert.match(docker, /assets\/noctemblith-build\.json/);
+	assert.match(docker, /assets\/noctite-build\.json/);
+	const router = readFileSync(new URL('../packages/frontend/src/router.definition.ts', import.meta.url), 'utf8');
+	assert.match(router, /path: '\/noctite-updates'/);
+});
+test('new development domain has a separate Compose/Traefik identity', () => {
+	const compose = readFileSync(new URL('../deploy/manafield/compose.noctemblith-dev.candidate.yml', import.meta.url), 'utf8');
+	const legacy = readFileSync(new URL('../deploy/manafield/compose.dev.candidate.yml', import.meta.url), 'utf8');
+	const router = readFileSync(new URL('../deploy/manafield/traefik.noctemblith-dev.candidate.yml', import.meta.url), 'utf8');
+	assert.match(compose, /name: noctemblith-dev/);
+	assert.match(compose, /noctemblith-postgres:/);
+	assert.match(compose, /noctemblith-redis:/);
+	assert.match(compose, /noctemblith-media:/);
+	assert.match(legacy, /name: noctite-dev/);
+	assert.match(router, /noctemblith-dev\.manafield\.studio/);
 });

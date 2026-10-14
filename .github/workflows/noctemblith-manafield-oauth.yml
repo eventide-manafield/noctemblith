@@ -1,10 +1,10 @@
-name: Noctite Manafield OAuth foundation
+name: Noctemblith Manafield OAuth foundation
 on:
   pull_request:
     paths:
       - "packages/backend/src/server/manafield-oauth/**"
-      - "test/unit/noctite-manafield-oauth-node.test.mjs"
-      - ".github/workflows/noctite-manafield-oauth.yml"
+      - "test/unit/noctemblith-manafield-oauth-node.test.mjs"
+      - ".github/workflows/noctemblith-manafield-oauth.yml"
 permissions:
   contents: read
 jobs:
@@ -16,4 +16,4 @@ jobs:
         with:
           node-version: "22"
       - name: OAuth helper smoke tests
-        run: node --experimental-strip-types --test test/unit/noctite-manafield-oauth-node.test.mjs
+        run: node --experimental-strip-types --test test/unit/noctemblith-manafield-oauth-node.test.mjs

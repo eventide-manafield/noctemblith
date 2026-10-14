@@ -1,10 +1,10 @@
-# Noctite default color themes — Dusk / Dawn
+# Noctemblith default color themes — Dusk / Dawn
 
-The Noctite fork ships **two new built-in default themes**, alongside all
+The Noctemblith fork ships **two new built-in default themes**, alongside all
 existing Misskey themes. It does not rewrite the upstream base themes or
 override any administrator-owned or user-selected theme.
 
-## Dusk — dark (Noctite Purple)
+## Dusk — dark (Noctemblith Purple)
 
 | Role | Color |
 |---|---|
@@ -36,13 +36,13 @@ or the normal semantic success/error state.
 
 Manafield Home's own CSS light-mode tokens are the reference for ivory
 background (`#F7F4EF`), foreground (`#1F1B24`) and lavender accent
-(`#7B4FD6`). The orange is a Noctite-specific companion to the brand mark.
+(`#7B4FD6`). The orange is a Noctemblith-specific companion to the brand mark.
 
 ## Application integration
 
 - Canonical theme definitions:
-  `packages/frontend-shared/themes/d-noctite.json5`,
-  `packages/frontend-shared/themes/l-noctite.json5`.
+  `packages/frontend-shared/themes/d-noctemblith.json5`,
+  `packages/frontend-shared/themes/l-noctemblith.json5`.
 - Both are listed among the built-in choices via
   `packages/frontend-shared/js/theme.ts`.
 - Defaults apply to the main frontend, Theme Settings list, syntax
@@ -55,7 +55,7 @@ background (`#F7F4EF`), foreground (`#1F1B24`) and lavender accent
 - Changes to these source files do **not** live-update existing accounts'
   explicitly stored green themes. Select Dusk/Dawn in Settings → Themes
   or clear the previously chosen custom theme to use the fork defaults.
-- Backend/browser/PWA fallback branding shifts from Misskey green to Noctite
+- Backend/browser/PWA fallback branding shifts from Misskey green to Noctemblith
   purple. Existing instance-configured `themeColor` continues to win.
 - Certain green **data heatmaps** and genuine success indicators are retained
   deliberately. They are not a global brand accent.
@@ -65,7 +65,7 @@ background (`#F7F4EF`), foreground (`#1F1B24`) and lavender accent
 The zero-dependency checks are:
 
 ```bash
-node --test scripts/noctite-themes.test.mjs
+node --test scripts/noctemblith-themes.test.mjs
 ```
 
 They check the chosen tokens and basic text/button contrast (WCAG 4.5:1 for
@@ -74,5 +74,5 @@ import wiring and preference precedence. The full app build and visual QA
 are still needed, including theme toggling, buttons, focus states, modal
 overlays and mobile layout.
 
-This work is on `dev/noctite-branding`, not yet merged into the stable
-Noctite branch nor deployed to the live `noctite-dev` container.
+This work is on `dev/noctemblith-branding`, not yet merged into the stable
+Noctemblith branch nor deployed to the live `noctemblith-dev` container.

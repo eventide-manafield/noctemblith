@@ -1,7 +1,7 @@
-name: Noctite image (manual GHCR build)
+name: Noctemblith image (manual GHCR build)
 
 # This fork deliberately does NOT publish to misskey/misskey on Docker Hub.
-# Only an operator-triggered workflow targeting a Noctite release branch
+# Only an operator-triggered workflow targeting a Noctemblith release branch
 # can publish a commit-addressed image to this organization's GHCR namespace.
 on:
   workflow_dispatch:
@@ -11,8 +11,8 @@ permissions:
 
 jobs:
   build:
-    name: Build Noctite (linux/amd64)
-    if: startsWith(github.ref, 'refs/heads/noctite/')
+    name: Build Noctemblith (linux/amd64)
+    if: (startsWith(github.ref, 'refs/heads/noctite/') || startsWith(github.ref, 'refs/heads/noctemblith/'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,15 +34,15 @@ jobs:
         with:
           context: .
           build-args: |
-            NOCTITE_BUILD_SHA=${{ github.sha }}
-            NOCTITE_UPDATE_CHANNEL=${{ github.ref_name }}
+            NOCTEMBLITH_BUILD_SHA=${{ github.sha }}
+            NOCTEMBLITH_UPDATE_CHANNEL=${{ github.ref_name }}
           platforms: linux/amd64
           push: true
           provenance: false
-          tags: ghcr.io/eventide-manafield/noctite:build-${{ github.sha }}
+          tags: ghcr.io/eventide-manafield/noctemblith:build-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Publish digest in workflow summary
         run: |
-          printf 'Image: `ghcr.io/eventide-manafield/noctite:build-%s`\n\nDigest: `%s`\n' \
+          printf 'Image: `ghcr.io/eventide-manafield/noctemblith:build-%s`\n\nDigest: `%s`\n' \
             "${GITHUB_SHA}" "${{ steps.image.outputs.digest }}" >> "${GITHUB_STEP_SUMMARY}"

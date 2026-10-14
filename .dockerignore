@@ -30,6 +30,6 @@ fluent-emojis/
 packages/*/.vscode/
 packages/backend/test/compose.yml
 
-# Noctite instance-only credentials must never be copied into build context.
+# Noctemblith instance-only credentials must never be copied into build context.
 deploy/manafield/secrets/
 deploy/manafield/.env

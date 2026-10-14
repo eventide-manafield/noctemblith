@@ -1,9 +1,9 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * A small, server-side OAuth2 + PKCE client protocol helper. This file does
- * not create Noctite users, issue sessions or register HTTP routes.
+ * not create Noctemblith users, issue sessions or register HTTP routes.
  */
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -35,15 +35,15 @@ function strictHttpsUrl(value: string): URL {
 
 /**
  * An incomplete configuration is an error, not a request to activate a broken
- * login button. Omitting all settings keeps standalone Noctite independent.
+ * login button. Omitting all settings keeps standalone Noctemblith independent.
  */
 export function readManafieldOAuthSettings(
 	env: Record<string, string | undefined>,
-	noctitePublicUrl: string,
+	instancePublicUrl: string,
 ): ManafieldOAuthSettings | null {
-	const accountOrigin = env.NOCTITE_MANAFIELD_ACCOUNT_ORIGIN;
-	const clientId = env.NOCTITE_MANAFIELD_OAUTH_CLIENT_ID;
-	const callbackUrl = env.NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL;
+	const accountOrigin = env.NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN ?? env.NOCTITE_MANAFIELD_ACCOUNT_ORIGIN;
+	const clientId = env.NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID ?? env.NOCTITE_MANAFIELD_OAUTH_CLIENT_ID;
+	const callbackUrl = env.NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL ?? env.NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL;
 	if (!accountOrigin && !clientId && !callbackUrl) return null;
 	if (!accountOrigin || !clientId || !callbackUrl || !clientIdPattern.test(clientId)) {
 		throw new Error('Incomplete Manafield OAuth configuration');
@@ -53,10 +53,10 @@ export function readManafieldOAuthSettings(
 	if (account.pathname !== '/' || account.href !== account.origin + '/') {
 		throw new Error('Manafield Account endpoint must be an HTTPS origin');
 	}
-	const own = strictHttpsUrl(noctitePublicUrl);
+	const own = strictHttpsUrl(instancePublicUrl);
 	const callback = strictHttpsUrl(callbackUrl);
 	if (callback.origin !== own.origin || callback.pathname !== '/auth/manafield/callback') {
-		throw new Error('Manafield OAuth callback must be owned by this Noctite instance');
+		throw new Error('Manafield OAuth callback must be owned by this Noctemblith instance');
 	}
 
 	return { accountOrigin: account.origin, clientId, callbackUrl: callback.href };

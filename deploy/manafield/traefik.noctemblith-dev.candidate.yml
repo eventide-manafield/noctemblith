@@ -1,0 +1,17 @@
+# CANDIDATE ONLY: no live Traefik configuration changes on merge.
+# Administrator: set a strong setupPassword in private Noctemblith config,
+# restart the app, verify initial admin protection and dev domain/TLS before
+# installing this file into Traefik's dynamic configuration directory.
+http:
+  routers:
+    noctemblith-dev:
+      rule: Host(`noctemblith-dev.manafield.studio`)
+      entryPoints:
+        - websecure
+      service: noctemblith-dev
+      tls: {}
+  services:
+    noctemblith-dev:
+      loadBalancer:
+        servers:
+          - url: http://noctemblith-dev:3000

@@ -1,0 +1,16 @@
+# Optional HTTPS ingress overlay for the new isolated Noctemblith dev stack.
+# Not used unless an administrator explicitly selects BOTH Compose files.
+# The project must remain noctemblith-dev to reuse only the existing dev DB/media.
+name: noctemblith-dev
+
+services:
+  noctemblith:
+    networks:
+      manafield_edge:
+        aliases:
+          - noctemblith-dev
+
+networks:
+  manafield_edge:
+    name: manafield-edge
+    external: true
