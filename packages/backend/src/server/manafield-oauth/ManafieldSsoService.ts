@@ -64,6 +64,7 @@ function appendCookie(reply: FastifyReply, value: string) {
  const existing = Array.isArray(current) ? current : typeof current === 'string' ? [current] : [];
  reply.header('Set-Cookie', [...existing, value]);
 }
+
 function setProofCookie(reply: FastifyReply, name: string, value: string, ttl: number) {
  appendCookie(reply, name + '=' + value +
   '; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=' + ttl);
