@@ -9574,6 +9574,8 @@ export interface operations {
                         remoteNotesCleaningExpiryDaysForEachNotes: number;
                         remoteNotesCleaningMaxProcessingDurationInMinutes: number;
                         showRoleBadgesOfRemoteUsers: boolean;
+                        /** @enum {string} */
+                        noctiteUpdateChannel: 'noctite/release/latest' | 'noctite/dev';
                     };
                 };
             };
@@ -13094,6 +13096,8 @@ export interface operations {
                     remoteNotesCleaningExpiryDaysForEachNotes?: number;
                     remoteNotesCleaningMaxProcessingDurationInMinutes?: number;
                     showRoleBadgesOfRemoteUsers?: boolean;
+                    /** @enum {string} */
+                    noctiteUpdateChannel?: 'noctite/release/latest' | 'noctite/dev';
                 };
             };
         };
