@@ -59,6 +59,18 @@
 
 ---
 
+## Noctite user-facing Korean copy (required)
+
+This Noctite fork's Korean product copy addresses **end users and server administrators**, not the developer who is chatting with an agent.
+
+- **Always use polite/formal Korean** for user-visible text: screens, settings, notices, dialogs, errors, update guidance, and emails. Prefer clear **-습니다 / -ㅂ니다** statements and respectful **-세요 / -해 주세요** instructions.
+- Buttons, headings, and labels can be concise neutral noun phrases such as `업데이트 다시 확인`; full sentences must not use informal endings (`-야`, `-해`, `-줘`, `-없어`, etc.), slang, jokes or chat-style speech.
+- This policy includes administrator-only pages. An admin UI is still product UI, **not a private conversation with the developer**.
+- Before shipping, inspect **both** component templates and messages returned from TypeScript/API/backend code. Check loading, success, empty, error, copy-confirmation and update-flow states, not just the initially visible screen.
+- Example: `현재 실행 중인 이미지의 정보를 확인할 수 없어. 다시 확인해줘.` → `현재 실행 중인 이미지의 정보를 확인할 수 없습니다. 다시 확인해 주세요.`
+- Do not globally rewrite upstream Misskey translations or Crowdin-managed locale files to implement this rule. For new multilingual features, follow the repository's existing i18n rules.
+- Casual Korean used in direct developer/agent chats is fine; **never copy that chat voice into released product strings**.
+
 ## 変更を出す前の最低チェック
 
 各エージェントは [shipping-misskey-change スキル](.claude/skills/shipping-misskey-change/SKILL.md) を参照すること。スキルが利用できない環境でも、以下のチェックは必ず実施すること:
