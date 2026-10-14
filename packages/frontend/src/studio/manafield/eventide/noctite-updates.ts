@@ -110,7 +110,7 @@ export async function checkForUpdates(): Promise<UpdateCheck> {
 	try {
 		const metadata = await fetchJson('/noctite-build.json', true).catch(() => null);
 		if (!isBuildMetadata(metadata)) {
-			return { state: 'untracked', current: null, message: '현재 실행 중인 Noctite 이미지의 빌드 정보를 확인할 수 없어. 새로운 GHCR 이미지로 배포한 뒤 다시 확인해줘.' };
+			return { state: 'untracked', current: null, message: '현재 실행 중인 Noctite 이미지의 빌드 정보를 확인할 수 없습니다. 새로운 GHCR 이미지를 배포한 뒤 다시 확인해 주세요.' };
 		}
 		current = metadata;
 		const params = new URLSearchParams({
@@ -122,7 +122,7 @@ export async function checkForUpdates(): Promise<UpdateCheck> {
 		const url = `https://api.github.com/repos/${REPOSITORY}/actions/workflows/${UPDATE_WORKFLOW}/runs?${params}`;
 		const candidate = parseLatestSuccessfulRun(await fetchJson(url), current.channel);
 		if (!candidate || candidate.sha === current.sha) {
-			return { state: 'current', current, message: candidate ? '현재 최신 검증 빌드를 사용 중이야.' : '이 채널에서 성공한 배포 이미지를 아직 찾지 못했어.' };
+			return { state: 'current', current, message: candidate ? '현재 최신 검증 빌드를 사용 중입니다.' : '이 채널에서 성공한 배포 이미지를 아직 찾지 못했습니다.' };
 		}
 
 		// A successfully published image can be older than this deployment.
@@ -130,10 +130,10 @@ export async function checkForUpdates(): Promise<UpdateCheck> {
 		const compareUrl = `https://api.github.com/repos/${REPOSITORY}/compare/${current.sha}...${candidate.sha}`;
 		const compare = await fetchJson(compareUrl) as { status?: unknown };
 		if (compare.status !== 'ahead') {
-			return { state: 'current', current, message: '현재 빌드보다 새로운 검증 이미지는 없어.' };
+			return { state: 'current', current, message: '현재 빌드보다 새로운 검증 이미지는 없습니다.' };
 		}
 		return { state: 'available', current, candidate };
 	} catch {
-		return { state: 'error', current, message: '업데이트 정보를 가져오지 못했어. GitHub 연결이나 API 요청 제한을 확인해줘.' };
+		return { state: 'error', current, message: '업데이트 정보를 가져오지 못했습니다. GitHub 연결 상태 또는 API 요청 제한을 확인해 주세요.' };
 	}
 }
