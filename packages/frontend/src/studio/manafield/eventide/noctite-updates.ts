@@ -91,6 +91,8 @@ export function readDecision(adminId: string): UpdateDecision {
 
 export function saveDecision(adminId: string, decision: UpdateDecision): void {
 	localStorage.setItem(`studio.manafield.eventide:noctite-update:${adminId}`, JSON.stringify(decision));
+	// Synchronize the compact admin notice and the full update center in this tab.
+	if (typeof window !== 'undefined') window.dispatchEvent(new Event('noctite-update-decision'));
 }
 
 async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
