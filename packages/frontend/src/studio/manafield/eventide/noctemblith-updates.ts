@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Noctemblith's administrator update viewer. This deliberately NEVER executes
