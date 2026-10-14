@@ -26,8 +26,15 @@ function createMockService() {
 
  const user = { id: 'local-eventide', host: null, isSuspended: false, isDeleted: false, token: nativeToken };
  const values = new Map<string, string>();
+ const rateCounts = new Map<string, number>();
  const links = new Map<string, string>();
  const redis = {
+  incr: vi.fn(async (key: string) => {
+   const count = (rateCounts.get(key) ?? 0) + 1;
+   rateCounts.set(key, count);
+   return count;
+  }),
+  expire: vi.fn(async () => 1),
   set: vi.fn(async (key: string, value: string) => {
    if (values.has(key)) return null;
    values.set(key, value);
@@ -129,6 +136,18 @@ describe('Manafield dev SSO existing-account ownership', () => {
    } });
    expect(good.statusCode).toBe(200);
    expect(new URL(good.json().authorizationUrl).host).toBe('manafield.studio');
+  } finally { await app.close(); }
+ });
+
+ it('rate-limits repeated OAuth start attempts without storing client IPs', async () => {
+  const { app } = createMockService();
+  try {
+   for (let i = 0; i < 10; i++) {
+    const result = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+    expect(result.statusCode).toBe(303);
+   }
+   const blocked = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+   expect(blocked.statusCode).toBe(429);
   } finally { await app.close(); }
  });
 
