@@ -63,13 +63,18 @@ function createMockService() {
  };
  const repository = { findOneBy: vi.fn(async ({ id }: { id: string }) => id === user.id ? user : null) };
  const auth = { authenticate: vi.fn(async (token: string) => token === nativeToken ? [user, null] : [null, null]) };
+ const role = { isModerator: vi.fn(async () => false) };
+ const signin = { signin: vi.fn((_request: unknown, reply: { code(n: number): unknown }, u: typeof user) => {
+  reply.code(200);
+  return { finished: true, id: u.id, i: u.token };
+ }) };
  const config = { url: ownOrigin + '/' };
 
  const service = new ManafieldSsoService(config as any, redis as any, db as any,
-  repository as any, auth as any);
+  repository as any, auth as any, role as any, signin as any);
  const app = Fastify();
  service.registerRoutes(app);
- return { app, user, redis, db, links };
+ return { app, user, redis, db, links, role, signin };
 }
 
 function stubIssuer() {
@@ -98,7 +103,7 @@ describe('Manafield dev SSO existing-account ownership', () => {
  it('is disabled by default, leaving local login intact', async () => {
   vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', '');
   const service = new ManafieldSsoService({ url: ownOrigin } as any, {} as any,
-   {} as any, {} as any, {} as any);
+   {} as any, {} as any, {} as any, {} as any, {} as any);
   const app = Fastify();
   service.registerRoutes(app);
   try {
@@ -173,7 +178,7 @@ describe('Manafield dev SSO existing-account ownership', () => {
    const good = await app.inject({ method: 'POST', url: endpoint, payload: { ticket },
     headers: { origin: ownOrigin, cookie: proofCookie } });
    expect(good.statusCode).toBe(200);
-   expect(good.json().token).toBe(nativeToken);
+   expect(good.json()).toMatchObject({ finished: true, i: nativeToken });
    const replay = await app.inject({ method: 'POST', url: endpoint, payload: { ticket },
     headers: { origin: ownOrigin, cookie: proofCookie } });
    expect(replay.statusCode).toBe(400);
