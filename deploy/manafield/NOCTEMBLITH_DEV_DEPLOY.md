@@ -43,6 +43,28 @@ or remove Docker volumes. Stop the app with `docker compose stop` if required.
 
 ## Source compatibility policy
 
-Already-applied DB migration files are immutable. The new project evolves
-its own `noctemblithUpdateChannel` column using a separate rename migration
-instead of rewriting migration history. The web UI exposes only the new brand.
+Noctemblith uses Misskey upstream migrations unchanged, followed by three
+Noctemblith-only migrations. The first directly creates the
+`noctemblithUpdateChannel` column, the second creates the custom emoji
+bootstrap table, and the third changes the default channel color.
+
+**Important:** The previous pre-release schema is not upgrade-compatible with
+this new migration history. The running development database must be destroyed
+and recreated only **after** a matching new GHCR image is published and checked.
+This intentionally loses the development user account and any notes or media.
+The original Misskey upstream migration history stays intact.
+
+For the development Compose project, verify the project name is exactly
+`noctemblith-dev`, and that its named volumes belong exclusively to this
+stack. Only then may the owner run `docker compose down --volumes` to clear
+its PostgreSQL, Redis and media state, followed by `docker compose up -d`
+with the reviewed, updated immutable image digest. The old image must **never**
+be started against the new empty volumes after this reset.
+
+The legacy development instance has separate containers, ingress and volumes.
+Once the newly created instance passes HTTPS health, admin setup and metadata
+verification, the owner may retire the legacy Compose project and remove its
+**verified, dedicated** volumes and Traefik route. Do not touch unrelated
+Manafield or Misskey projects. This operation is irreversible and must be
+performed from a Docker-authorized operator account; the connected agent
+cannot access the Docker socket.

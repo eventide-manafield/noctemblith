@@ -13,9 +13,12 @@ The `compose.noctemblith-dev.candidate.yml`, `compose.noctemblith-dev-edge.candi
 files in this directory are **reference templates**, not the running Compose files.
 See `NOCTEMBLITH_DEV_DEPLOY.md` for the actual deployment path and checks.
 
-Never change the origin of an existing federated server in place. Do not run
-`docker compose down -v`, copy secrets into the repository, expose PostgreSQL or Redis
-to the public edge, or apply candidate Traefik files without operator approval.
+Never change an ActivityPub origin in place. Destruction of the old dev
+instance and reset of the new dev database are **explicit owner-approved,
+project-scoped operations** described in `NOCTEMBLITH_DEV_DEPLOY.md`.
+Never run `down --volumes` without first validating the exact Compose project.
+Do not copy secrets into the repository, expose PostgreSQL or Redis to the public
+edge, or apply candidate Traefik files without operator approval.
 
 Production deployment is a separate decision with new secrets, volumes and a
 permanent hostname. The existing deployment is **development only**.

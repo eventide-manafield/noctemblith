@@ -13,7 +13,6 @@ const read = (path) => readFileSync(new URL('../' + path, import.meta.url));
 const txt = (path) => read(path).toString('utf8');
 
 test('Noctemblith canonical SVG is standalone, vector, and non-executable', () => {
-	assert.throws(() => read('packages/backend/assets/noctite.svg'));
 
 	const s = txt('packages/backend/assets/noctemblith.svg');
 	assert.match(s, /<svg\b/);

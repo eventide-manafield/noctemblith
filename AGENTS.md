@@ -105,8 +105,8 @@ This Noctemblith fork's Korean product copy addresses **end users and server adm
 ## Noctemblith branding and federation identity (required)
 
 - User-visible project brand: Noctemblith (녹템블리스), gemstone name 그믐석.
-- Never rename or rewrite an existing ActivityPub origin in-place; preserve the existing instance and its independent DB/media.
+- Never rewrite an established ActivityPub origin in-place. Retiring a legacy development instance is a separate destructive operator action, permitted only with explicit owner authorization and project/volume verification.
 - New isolated development origin: https://noctemblith-dev.manafield.studio/ with separate Compose project, database, Redis, volumes and routing.
-- Already-applied migration scripts are immutable. Historical bootstrap tables belong to old migration history only; current public code uses noctemblithUpdateChannel, introduced by a new rename migration.
+- This fork starts from a fresh database and does not support in-place upgrades from its retired pre-release schema. Preserve upstream Misskey migrations; the Noctemblith update column is created directly by a new Noctemblith migration. Never run the revised chain on an existing fork database without an explicit reset.
 - Do not alter active DNS, Traefik dynamic config or deploy either stack on source merge; operator approval and cutover checks are required.
 - Repo renaming is performed by the repository owner after validated code is pushed; GHCR package publishing is a separately managed namespace.
