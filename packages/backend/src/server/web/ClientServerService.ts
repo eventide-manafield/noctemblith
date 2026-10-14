@@ -158,12 +158,12 @@ export class ClientServerService {
 			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 			'theme_color': this.meta.themeColor || '#7A35B6',
 			'icons': [{
-				'src': this.meta.app192IconUrl || '/static-assets/noctite-emoji.png',
+				'src': this.meta.app192IconUrl || '/static-assets/noctemblith-emoji.png',
 				'sizes': this.meta.app192IconUrl ? '192x192' : '128x128',
 				'type': 'image/png',
 				'purpose': 'any',
 			}, {
-				'src': this.meta.app512IconUrl || '/static-assets/noctite.svg',
+				'src': this.meta.app512IconUrl || '/static-assets/noctemblith.svg',
 				'sizes': this.meta.app512IconUrl ? '512x512' : 'any',
 				'type': this.meta.app512IconUrl ? 'image/png' : 'image/svg+xml',
 				'purpose': 'any',
@@ -280,11 +280,17 @@ export class ClientServerService {
 		});
 
 		fastify.get('/favicon.ico', async (request, reply) => {
-			return reply.redirect('/static-assets/noctite-emoji.png', 302);
+			return reply.redirect('/static-assets/noctemblith-emoji.png', 302);
 		});
 
 		fastify.get('/apple-touch-icon.png', async (request, reply) => {
-			return reply.sendFile('/noctite-emoji.png', this.staticAssets);
+			return reply.sendFile('/noctemblith-emoji.png', this.staticAssets);
+		});
+
+		fastify.get('/noctemblith-build.json', async (_request, reply) => {
+			// No API credentials or host secrets. Avoid stale metadata after deployment.
+			reply.header('Cache-Control', 'no-store');
+			return reply.sendFile('/noctemblith-build.json', this.staticAssets, { cacheControl: false });
 		});
 
 		fastify.get('/noctite-build.json', async (_request, reply) => {

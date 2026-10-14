@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <template>
 <section v-if="$i?.isAdmin && (!compact || pending)" class="_panel" :class="$style.root">
 	<div class="_gaps_s">
-		<div :class="$style.heading"><i class="ti ti-package"></i> <b>Noctite 업데이트</b></div>
+		<div :class="$style.heading"><i class="ti ti-package"></i> <b>Noctemblith 업데이트</b></div>
 		<template v-if="!compact">
 			<div :class="$style.settings" class="_gaps_s">
 				<b>서버 업데이트 구독</b>
@@ -41,7 +41,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			</div>
 			<div v-if="showDevWarning" class="_gaps_s" :class="$style.warning" role="alert">
 				<b><i class="ti ti-alert-triangle"></i> 주의: 개발 버전 업데이트</b>
-				<p>선택한 빌드는 개발 및 테스트가 진행 중인 <code>noctite/dev</code> 브랜치의 이미지입니다. 기능 오류, 서버 중단, 데이터 손상 또는 데이터베이스 호환성 문제가 발생할 수 있습니다.</p>
+				<p>선택한 빌드는 개발 및 테스트가 진행 중인 <code>noctemblith/dev</code> 브랜치의 이미지입니다. 기능 오류, 서버 중단, 데이터 손상 또는 데이터베이스 호환성 문제가 발생할 수 있습니다.</p>
 				<p><strong>개발 버전의 안정성과 이전 버전으로의 복구는 보장되지 않습니다.</strong> 데이터베이스와 첨부파일을 백업하고 위험을 이해한 경우에만 진행해 주세요.</p>
 				<label :class="$style.acknowledge">
 					<input v-model="devRiskAccepted" type="checkbox"/>
@@ -80,7 +80,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { UpdateChannel, UpdateCheck } from '@/studio/manafield/eventide/noctite-updates.js';
+import type { UpdateChannel, UpdateCheck } from '@/studio/manafield/eventide/noctemblith-updates.js';
 import MkButton from '@/components/MkButton.vue';
 import MkRadios from '@/components/MkRadios.vue';
 import MkSwitch from '@/components/MkSwitch.vue';
@@ -97,12 +97,12 @@ import {
 	readDecision,
 	saveDecision,
 	shouldNotify,
-} from '@/studio/manafield/eventide/noctite-updates.js';
+} from '@/studio/manafield/eventide/noctemblith-updates.js';
 
 const props = defineProps<{ compact?: boolean }>();
 const channelOptions: { value: UpdateChannel; label: string; caption: string }[] = [
-	{ value: RELEASE_CHANNEL, label: '안정 릴리스', caption: 'noctite/release/latest — 기본 구독 채널' },
-	{ value: DEV_CHANNEL, label: '개발 빌드', caption: 'noctite/dev — 구독 변경 시 개발 빌드도 업데이트 알림에 포함됩니다.' },
+	{ value: RELEASE_CHANNEL, label: '안정 릴리스', caption: 'noctemblith/release/latest — 기본 구독 채널' },
+	{ value: DEV_CHANNEL, label: '개발 빌드', caption: 'noctemblith/dev — 구독 변경 시 개발 빌드도 업데이트 알림에 포함됩니다.' },
 ];
 
 const subscription = ref<UpdateChannel>(RELEASE_CHANNEL);

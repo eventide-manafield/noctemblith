@@ -59,9 +59,9 @@
 
 ---
 
-## Noctite user-facing Korean copy (required)
+## Noctemblith user-facing Korean copy (required)
 
-This Noctite fork's Korean product copy addresses **end users and server administrators**, not the developer who is chatting with an agent.
+This Noctemblith fork's Korean product copy addresses **end users and server administrators**, not the developer who is chatting with an agent.
 
 - **Always use polite/formal Korean** for user-visible text: screens, settings, notices, dialogs, errors, update guidance, and emails. Prefer clear **-습니다 / -ㅂ니다** statements and respectful **-세요 / -해 주세요** instructions.
 - Buttons, headings, and labels can be concise neutral noun phrases such as `업데이트 다시 확인`; full sentences must not use informal endings (`-야`, `-해`, `-줘`, `-없어`, etc.), slang, jokes or chat-style speech.
@@ -101,3 +101,12 @@ This Noctite fork's Korean product copy addresses **end users and server adminis
 | 開発サーバー (backend + frontend watch) | `pnpm dev` |
 
 **注意:** backend テスト (`test` / `test:e2e` / `test:fed`) 実行前に `.config/test.yml` が必要 (`ncp .github/misskey/test.yml .config/test.yml` または `cp .github/misskey/test.yml .config/test.yml` で作成)。
+
+## Noctemblith branding and federation identity (required)
+
+- User-visible project brand: Noctemblith (녹템블리스), gemstone name 그믐석.
+- Keep the existing Noctite development instance (origin, DB, users and media) unchanged and reachable. Never rewrite an established ActivityPub origin in-place.
+- New isolated development origin: https://noctemblith-dev.manafield.studio/ with separate Compose project, database, Redis, volumes and routing.
+- Existing noctite_bootstrap_state, noctiteUpdateChannel, legacy emoji and original theme IDs are persistent compatibility identifiers; do not rename or edit already-applied migrations.
+- Do not alter active DNS, Traefik dynamic config or deploy either stack on source merge; operator approval and cutover checks are required.
+- Repo renaming is performed by the repository owner after validated code is pushed; GHCR package publishing is a separately managed namespace.

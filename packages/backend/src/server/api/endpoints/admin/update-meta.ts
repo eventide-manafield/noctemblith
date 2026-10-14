@@ -230,7 +230,7 @@ export const paramDef = {
 		showRoleBadgesOfRemoteUsers: { type: 'boolean' },
 		noctiteUpdateChannel: {
 			type: 'string',
-			enum: ['noctite/release/latest', 'noctite/dev'],
+			enum: ['noctemblith/release/latest', 'noctemblith/dev'],
 		},
 	},
 	required: [],

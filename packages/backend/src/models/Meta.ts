@@ -749,9 +749,9 @@ export class MiMeta {
 
 	@Column('varchar', {
 		length: 64,
-		default: 'noctite/release/latest',
+		default: 'noctemblith/release/latest',
 	})
-	public noctiteUpdateChannel: 'noctite/release/latest' | 'noctite/dev';
+	public noctiteUpdateChannel: 'noctemblith/release/latest' | 'noctemblith/dev';
 
 	@Column('jsonb', {
 		default: { },

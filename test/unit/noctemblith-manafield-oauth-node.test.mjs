@@ -1,9 +1,9 @@
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Dependency-free smoke tests for the pure OAuth foundation.
- * Run: node --experimental-strip-types --test test/unit/noctite-manafield-oauth-node.test.mjs
+ * Run: node --experimental-strip-types --test test/unit/noctemblith-manafield-oauth-node.test.mjs
  */
 
 import assert from 'node:assert/strict';
@@ -17,24 +17,24 @@ import {
 	readManafieldOAuthSettings,
 } from '../../packages/backend/src/server/manafield-oauth/client.ts';
 
-const base = 'https://noctite.manafield.studio/';
+const base = 'https://noctemblith.manafield.studio/';
 const env = {
-	NOCTITE_MANAFIELD_ACCOUNT_ORIGIN: 'https://manafield.studio',
-	NOCTITE_MANAFIELD_OAUTH_CLIENT_ID: 'noctite-manafield-integration',
-	NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctite.manafield.studio/auth/manafield/callback',
+	NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN: 'https://manafield.studio',
+	NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID: 'noctemblith-manafield-integration',
+	NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL: 'https://noctemblith.manafield.studio/auth/manafield/callback',
 };
 
-test('standalone Noctite is not automatically enrolled', () => {
+test('standalone Noctemblith is not automatically enrolled', () => {
 	assert.equal(readManafieldOAuthSettings({}, base), null);
 });
 
 test('reject partial or redirect-to-external client configuration', () => {
 	assert.throws(() => readManafieldOAuthSettings({
-		NOCTITE_MANAFIELD_OAUTH_CLIENT_ID: 'incomplete',
+		NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID: 'incomplete',
 	}, base));
 	assert.throws(() => readManafieldOAuthSettings({
 		...env,
-		NOCTITE_MANAFIELD_OAUTH_CALLBACK_URL: 'https://attacker.invalid/auth/manafield/callback',
+		NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL: 'https://attacker.invalid/auth/manafield/callback',
 	}, base));
 });
 

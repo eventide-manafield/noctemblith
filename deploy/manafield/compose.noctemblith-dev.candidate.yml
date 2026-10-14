@@ -1,0 +1,100 @@
+# Candidate only. Does NOT start anything on merge. Run solely in a reviewed
+# development environment with its own immutable Noctemblith domain.
+#
+# Required operator-owned files (NEVER commit):
+#   .config/default.yml     (url, db host=db, db user=noctemblith, redis host=redis)
+#   secrets/database-password
+#
+# The image must be an audited, published Noctemblith image, pinned by digest.
+name: noctemblith-dev
+
+services:
+  noctemblith:
+    image: ${NOCTEMBLITH_IMAGE:?Set a verified Noctemblith image digest}
+    restart: unless-stopped
+    init: true
+    volumes:
+      - type: bind
+        source: ../../.config
+        target: /misskey/.config
+        read_only: true
+      - noctemblith-media:/misskey/files
+    secrets:
+      - noctemblith_database_password
+    # Misskey reads DATABASE_PASSWORD from the environment. Supply it only
+    # inside the app process, not in the Compose file, shell history or logs.
+    entrypoint: ["/usr/bin/tini", "--"]
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        export DATABASE_PASSWORD="$$(cat /run/secrets/noctemblith_database_password)"
+        exec pnpm run migrateandstart
+    healthcheck:
+      test: ["CMD", "/bin/bash", "/misskey/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
+    networks:
+      noctemblith_private: {}
+      manafield_modules:
+        aliases:
+          - noctemblith
+
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noctemblith
+      POSTGRES_DB: noctemblith
+      POSTGRES_PASSWORD_FILE: /run/secrets/noctemblith_database_password
+    secrets:
+      - noctemblith_database_password
+    volumes:
+      - noctemblith-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noctemblith -d noctemblith"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - noctemblith_private
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - noctemblith-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - noctemblith_private
+
+networks:
+  noctemblith_private:
+    internal: true
+  # Use a DEV adapter network, never the operating Manafield modules network.
+  # A separately managed development Manafield Adapter joins this network.
+  manafield_modules:
+    name: ${NOCTEMBLITH_MODULES_NETWORK:-noctemblith-dev-modules}
+    external: true
+
+secrets:
+  noctemblith_database_password:
+    file: ./secrets/noctemblith-database-password
+
+volumes:
+  noctemblith-postgres:
+  noctemblith-redis:
+  noctemblith-media:

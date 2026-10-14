@@ -2,15 +2,15 @@
  * SPDX-FileCopyrightText: Noctite contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
- * Noctite's administrator update viewer. This deliberately NEVER executes
+ * Noctemblith's administrator update viewer. This deliberately NEVER executes
  * shell commands, writes Docker configuration, or handles host credentials.
  * Namespace: studio.manafield.eventide
  */
 
-export const REPOSITORY = 'eventide-manafield/noctite';
+export const REPOSITORY = 'eventide-manafield/noctemblith';
 export const UPDATE_WORKFLOW = 'docker.yml';
-export const RELEASE_CHANNEL = 'noctite/release/latest' as const;
-export const DEV_CHANNEL = 'noctite/dev' as const;
+export const RELEASE_CHANNEL = 'noctemblith/release/latest' as const;
+export const DEV_CHANNEL = 'noctemblith/dev' as const;
 export type UpdateChannel = typeof RELEASE_CHANNEL | typeof DEV_CHANNEL;
 
 export function parseSubscription(value: unknown): UpdateChannel {
@@ -20,7 +20,7 @@ export function parseSubscription(value: unknown): UpdateChannel {
 export const WORKFLOW_PAGE = `https://github.com/${REPOSITORY}/actions/workflows/${UPDATE_WORKFLOW}`;
 
 const SHA_RE = /^[0-9a-f]{40}$/i;
-const CHANNEL_RE = /^noctite\/[a-z0-9._/-]+$/i;
+const CHANNEL_RE = /^(?:noctemblith|noctite)\/[a-z0-9._/-]+$/i;
 const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type BuildMetadata = {
@@ -116,9 +116,9 @@ async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
 export async function checkForUpdates(channel: UpdateChannel = RELEASE_CHANNEL): Promise<UpdateCheck> {
 	let current: BuildMetadata | null = null;
 	try {
-		const metadata = await fetchJson('/noctite-build.json', true).catch(() => null);
+		const metadata = await fetchJson('/noctemblith-build.json', true).catch(() => fetchJson('/noctite-build.json', true).catch(() => null));
 		if (!isBuildMetadata(metadata)) {
-			return { state: 'untracked', current: null, message: '현재 실행 중인 Noctite 이미지의 빌드 정보를 확인할 수 없습니다. 새로운 GHCR 이미지를 배포한 뒤 다시 확인해 주세요.' };
+			return { state: 'untracked', current: null, message: '현재 실행 중인 Noctemblith 이미지의 빌드 정보를 확인할 수 없습니다. 새로운 GHCR 이미지를 배포한 뒤 다시 확인해 주세요.' };
 		}
 		current = metadata;
 		const params = new URLSearchParams({

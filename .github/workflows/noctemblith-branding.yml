@@ -1,36 +1,36 @@
-name: Noctite branding assets
+name: Noctemblith branding assets
 on:
   pull_request:
     paths:
-      - "assets/noctite-emoji.png"
-      - "packages/backend/assets/noctite.svg"
-      - "packages/backend/assets/noctite-emoji.png"
-      - "packages/backend/src/core/noctite-default-emoji.ts"
-      - "packages/backend/src/core/noctite-default-emoji.test.ts"
+      - "assets/noctemblith-emoji.png"
+      - "packages/backend/assets/noctemblith.svg"
+      - "packages/backend/assets/noctemblith-emoji.png"
+      - "packages/backend/src/core/noctemblith-default-emoji.ts"
+      - "packages/backend/src/core/noctemblith-default-emoji.test.ts"
       - "packages/backend/src/core/CustomEmojiService.ts"
       - "packages/backend/src/server/web/ClientServerService.ts"
       - "packages/backend/src/server/web/HtmlTemplateService.ts"
       - "packages/frontend/src/ui/_common_/navbar.vue"
       - "packages/frontend/src/ui/_common_/navbar-h.vue"
       - "packages/frontend/src/pages/about.overview.vue"
-      - "scripts/noctite-branding.test.mjs"
+      - "scripts/noctemblith-branding.test.mjs"
       - "docs/branding.md"
-      - "packages/frontend-shared/themes/*-noctite.json5"
+      - "packages/frontend-shared/themes/*-noctemblith.json5"
       - "packages/frontend-shared/js/theme.ts"
       - "packages/frontend/src/boot/common.ts"
       - "packages/frontend/src/pages/settings/theme.vue"
       - "packages/frontend/src/utility/code-highlighter.ts"
       - "packages/frontend-embed/src/boot.ts"
-      - "scripts/noctite-themes.test.mjs"
-      - "scripts/noctite-update-center.test.mjs"
+      - "scripts/noctemblith-themes.test.mjs"
+      - "scripts/noctemblith-update-center.test.mjs"
       - "packages/frontend/src/studio/manafield/eventide/**"
-      - "packages/frontend/src/pages/admin/noctite-updates.vue"
+      - "packages/frontend/src/pages/admin/noctemblith-updates.vue"
       - "packages/frontend/src/pages/admin/index.vue"
       - "packages/frontend/src/router.definition.ts"
       - ".github/workflows/docker.yml"
       - "Dockerfile"
-      - "docs/noctite-update-center.md"
-      - ".github/workflows/noctite-branding.yml"
+      - "docs/noctemblith-update-center.md"
+      - ".github/workflows/noctemblith-branding.yml"
 permissions:
   contents: read
 jobs:
@@ -42,4 +42,4 @@ jobs:
         with:
           node-version: "22"
       - name: Validate icon assets and default UI fallbacks
-        run: node --experimental-strip-types --test scripts/noctite-branding.test.mjs scripts/noctite-themes.test.mjs scripts/noctite-update-center.test.mjs
+        run: node --experimental-strip-types --test scripts/noctemblith-branding.test.mjs scripts/noctemblith-themes.test.mjs scripts/noctemblith-update-center.test.mjs
