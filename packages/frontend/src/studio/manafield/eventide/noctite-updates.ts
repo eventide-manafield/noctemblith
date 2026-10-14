@@ -106,7 +106,7 @@ async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
 export async function checkForUpdates(): Promise<UpdateCheck> {
 	let current: BuildMetadata | null = null;
 	try {
-		const metadata = await fetchJson('/noctite-build.json', true);
+		const metadata = await fetchJson('/noctite-build.json', true).catch(() => null);
 		if (!isBuildMetadata(metadata)) {
 			return { state: 'untracked', current: null, message: '현재 실행 중인 Noctite 이미지의 빌드 정보를 확인할 수 없어. 새로운 GHCR 이미지로 배포한 뒤 다시 확인해줘.' };
 		}
