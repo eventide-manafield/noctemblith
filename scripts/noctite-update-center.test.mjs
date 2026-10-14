@@ -11,6 +11,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
 	checkForUpdates,
+	parseSubscription,
+	RELEASE_CHANNEL,
+	DEV_CHANNEL,
 	chooseUpdate,
 	isBuildMetadata,
 	parseLatestSuccessfulRun,
@@ -64,7 +67,7 @@ test('an update only appears when a successful channel build is ahead of install
 		return goodResponse({ status: 'ahead' });
 	};
 	try {
-		const result = await checkForUpdates();
+		const result = await checkForUpdates(DEV_CHANNEL);
 		assert.equal(result.state, 'available');
 		assert.equal(result.candidate.sha, nextSha);
 		assert.ok(urls[1].includes('branch=noctite%2Fdev'));
@@ -85,7 +88,7 @@ test('older, diverged and equal build results never trigger an update', async ()
 				if (count === 2) return goodResponse({ workflow_runs: [makeRun(nextSha)] });
 				return goodResponse({ status: comparison });
 			};
-			assert.equal((await checkForUpdates()).state, 'current');
+			assert.equal((await checkForUpdates(DEV_CHANNEL)).state, 'current');
 		}
 	} finally {
 		globalThis.fetch = originalFetch;
@@ -144,7 +147,7 @@ test('UI buttons are real controls but do not grant Docker or host execution pri
 	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
 	const workflow = readFileSync(new URL('../.github/workflows/docker.yml', import.meta.url), 'utf8');
 
-	for (const callback of ['@click="showGuide', '@click="skip"', '@click="snooze"']) assert.ok(ui.includes(callback));
+	for (const callback of ['@click="requestGuide"', '@click="skip"', '@click="snooze"']) assert.ok(ui.includes(callback));
 	assert.ok(ui.includes('수동 배포'));
 	assert.ok(nav.includes('NoctiteUpdatePanel'));
 	assert.ok(router.includes('/noctite-updates'));
@@ -174,6 +177,46 @@ test('update center Korean copy uses polite user-facing language', () => {
 	for (const source of [panel, messages]) {
 		assert.doesNotMatch(source, /(?:중이야|준비되었어|할 수 있어|확인해줘|교체해줘|찾지 못했어|사용 중이야|가져오지 못했어|변경하지 않아|사용해야 해|정보를 확인할 수 없어)/);
 	}
-	assert.match(panel, /새 빌드를 확인하는 중입니다/);
+	assert.match(panel, /업데이트 정보를 확인하는 중입니다/);
 	assert.match(messages, /빌드 정보를 확인할 수 없습니다/);
+});
+
+test('release subscription is default, development requires explicit selection', async () => {
+	assert.equal(parseSubscription(undefined), RELEASE_CHANNEL);
+	assert.equal(parseSubscription('noctite/other'), RELEASE_CHANNEL);
+	assert.equal(parseSubscription(DEV_CHANNEL), DEV_CHANNEL);
+	const originalFetch = globalThis.fetch;
+	const urls = [];
+	globalThis.fetch = async (url) => {
+		urls.push(String(url));
+		if (urls.length === 1) return goodResponse({ sha: oldSha, channel: DEV_CHANNEL });
+		return goodResponse({ workflow_runs: [makeRun(nextSha, DEV_CHANNEL)] });
+	};
+	try {
+		const result = await checkForUpdates();
+		assert.equal(result.state, 'current');
+		assert.ok(urls[1].includes('branch=noctite%2Frelease%2Flatest'));
+		assert.equal(urls.length, 2, 'default subscription must not query dev branch');
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
+});
+
+test('server-level subscription and dev warning are wired in UI and backend', () => {
+	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctiteUpdatePanel.vue', import.meta.url), 'utf8');
+	const meta = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/meta.ts', import.meta.url), 'utf8');
+	const update = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/update-meta.ts', import.meta.url), 'utf8');
+	const entity = readFileSync(new URL('../packages/backend/src/models/Meta.ts', import.meta.url), 'utf8');
+	const migration = readFileSync(new URL('../packages/backend/migration/1792000000000-NoctiteUpdateSubscription.js', import.meta.url), 'utf8');
+	assert.match(panel, /misskeyApi\('admin\/meta'\)/);
+	assert.match(panel, /misskeyApi\('admin\/update-meta'/);
+	assert.match(panel, /v-model="showDev"/);
+	assert.match(panel, /status\.value\.candidate\.channel === DEV_CHANNEL/);
+	assert.match(panel, /:disabled="!devRiskAccepted"/);
+	assert.match(panel, /개발 버전의 안정성과 이전 버전으로의 복구는 보장되지 않습니다/);
+	assert.match(meta, /noctiteUpdateChannel: instance\.noctiteUpdateChannel/);
+	assert.match(update, /set\.noctiteUpdateChannel = ps\.noctiteUpdateChannel/);
+	assert.match(entity, /default: 'noctite\/release\/latest'/);
+	assert.match(migration, /ALTER TABLE "meta" ADD "noctiteUpdateChannel"/);
+	assert.doesNotMatch(panel, /docker\.sock|child_process|execSync|spawn\(/);
 });
