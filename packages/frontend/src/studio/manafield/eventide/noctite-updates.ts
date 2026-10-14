@@ -9,6 +9,14 @@
 
 export const REPOSITORY = 'eventide-manafield/noctite';
 export const UPDATE_WORKFLOW = 'docker.yml';
+export const RELEASE_CHANNEL = 'noctite/release/latest' as const;
+export const DEV_CHANNEL = 'noctite/dev' as const;
+export type UpdateChannel = typeof RELEASE_CHANNEL | typeof DEV_CHANNEL;
+
+export function parseSubscription(value: unknown): UpdateChannel {
+	return value === DEV_CHANNEL ? DEV_CHANNEL : RELEASE_CHANNEL;
+}
+
 export const WORKFLOW_PAGE = `https://github.com/${REPOSITORY}/actions/workflows/${UPDATE_WORKFLOW}`;
 
 const SHA_RE = /^[0-9a-f]{40}$/i;
@@ -96,7 +104,7 @@ export function saveDecision(adminId: string, decision: UpdateDecision): void {
 }
 
 async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
-	const response = await fetch(url, {
+	const response = await globalThis.fetch(url, {
 		cache: 'no-store',
 		headers: { Accept: 'application/json' },
 		credentials: sameOrigin ? 'same-origin' : 'omit',
@@ -105,7 +113,7 @@ async function fetchJson(url: string, sameOrigin = false): Promise<unknown> {
 	return await response.json() as unknown;
 }
 
-export async function checkForUpdates(): Promise<UpdateCheck> {
+export async function checkForUpdates(channel: UpdateChannel = RELEASE_CHANNEL): Promise<UpdateCheck> {
 	let current: BuildMetadata | null = null;
 	try {
 		const metadata = await fetchJson('/noctite-build.json', true).catch(() => null);
@@ -114,15 +122,15 @@ export async function checkForUpdates(): Promise<UpdateCheck> {
 		}
 		current = metadata;
 		const params = new URLSearchParams({
-			branch: current.channel,
+			branch: channel,
 			event: 'workflow_dispatch',
 			status: 'success',
 			per_page: '20',
 		});
 		const url = `https://api.github.com/repos/${REPOSITORY}/actions/workflows/${UPDATE_WORKFLOW}/runs?${params}`;
-		const candidate = parseLatestSuccessfulRun(await fetchJson(url), current.channel);
+		const candidate = parseLatestSuccessfulRun(await fetchJson(url), channel);
 		if (!candidate || candidate.sha === current.sha) {
-			return { state: 'current', current, message: candidate ? '현재 최신 검증 빌드를 사용 중입니다.' : '이 채널에서 성공한 배포 이미지를 아직 찾지 못했습니다.' };
+			return { state: 'current', current, message: candidate ? '현재 최신 검증 빌드를 사용 중입니다.' : '선택한 채널에서 성공한 배포 이미지를 아직 찾지 못했습니다.' };
 		}
 
 		// A successfully published image can be older than this deployment.

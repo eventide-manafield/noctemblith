@@ -228,6 +228,10 @@ export const paramDef = {
 		remoteNotesCleaningExpiryDaysForEachNotes: { type: 'number' },
 		remoteNotesCleaningMaxProcessingDurationInMinutes: { type: 'number' },
 		showRoleBadgesOfRemoteUsers: { type: 'boolean' },
+		noctiteUpdateChannel: {
+			type: 'string',
+			enum: ['noctite/release/latest', 'noctite/dev'],
+		},
 	},
 	required: [],
 } as const;
@@ -786,6 +790,10 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 
 			if (ps.remoteNotesCleaningMaxProcessingDurationInMinutes !== undefined) {
 				set.remoteNotesCleaningMaxProcessingDurationInMinutes = ps.remoteNotesCleaningMaxProcessingDurationInMinutes;
+			}
+
+			if (ps.noctiteUpdateChannel !== undefined) {
+				set.noctiteUpdateChannel = ps.noctiteUpdateChannel;
 			}
 
 			if (ps.showRoleBadgesOfRemoteUsers !== undefined) {

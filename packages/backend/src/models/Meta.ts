@@ -747,6 +747,12 @@ export class MiMeta {
 	})
 	public showRoleBadgesOfRemoteUsers: boolean;
 
+	@Column('varchar', {
+		length: 64,
+		default: 'noctite/release/latest',
+	})
+	public noctiteUpdateChannel: 'noctite/release/latest' | 'noctite/dev';
+
 	@Column('jsonb', {
 		default: { },
 	})
