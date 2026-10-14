@@ -167,3 +167,13 @@ test('stamped image build metadata is strict JSON and is never cached by the app
 	assert.match(server, /reply\.header\('Cache-Control', 'no-store'\)/);
 	assert.match(server, /reply\.sendFile\('\/noctite-build\.json', this\.staticAssets, \{ cacheControl: false \}\)/);
 });
+
+test('update center Korean copy uses polite user-facing language', () => {
+	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctiteUpdatePanel.vue', import.meta.url), 'utf8');
+	const messages = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/noctite-updates.ts', import.meta.url), 'utf8');
+	for (const source of [panel, messages]) {
+		assert.doesNotMatch(source, /(?:중이야|준비되었어|할 수 있어|확인해줘|교체해줘|찾지 못했어|사용 중이야|가져오지 못했어|변경하지 않아|사용해야 해|정보를 확인할 수 없어)/);
+	}
+	assert.match(panel, /새 빌드를 확인하는 중입니다/);
+	assert.match(messages, /빌드 정보를 확인할 수 없습니다/);
+});
