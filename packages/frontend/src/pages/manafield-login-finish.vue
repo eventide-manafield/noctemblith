@@ -39,10 +39,19 @@ onMounted(async () => {
    headers: { 'Content-Type': 'application/json' },
    body: JSON.stringify({ ticket }),
   });
-  if (!response.ok) throw new Error('expired_or_invalid_ticket');
-  const result = await response.json() as { token?: unknown };
-  if (typeof result.token !== 'string' || result.token.length !== 16) throw new Error('invalid_login_response');
-  await login(result.token, '/');
+  if (!response.ok) {
+   const error = await response.json().catch(() => null) as { error?: string } | null;
+   if (error?.error === 'privileged_account_requires_local_login') {
+    message.value = '관리자·모더레이터 계정은 보안 정책상 기존 Noctemblith 로그인으로 들어와야 해. 계정 연결은 유지돼.';
+    return;
+   }
+   throw new Error('expired_or_invalid_ticket');
+  }
+  const result = await response.json() as { finished?: boolean; i?: unknown };
+  if (result.finished !== true || typeof result.i !== 'string' || result.i.length !== 16) {
+   throw new Error('invalid_login_response');
+  }
+  await login(result.i, '/');
  } catch {
   message.value = '로그인 확인이 만료됐거나 실패했어. 다시 시도해 줘.';
  }
