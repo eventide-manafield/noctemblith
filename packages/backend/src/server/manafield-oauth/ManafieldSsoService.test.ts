@@ -154,6 +154,30 @@ describe('Manafield dev SSO existing-account ownership', () => {
   } finally { await app.close(); }
  });
 
+ it('never issues a privileged native login token from central-only auth', async () => {
+  const { app, links, role, signin } = createMockService();
+  links.set(centralSub, 'local-eventide');
+  role.isModerator.mockResolvedValue(true);
+  stubIssuer();
+  try {
+   const started = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+   const callbackUrl = new URL(started.headers.location as string);
+   const stateCookie = cookieFromHeader(started.headers['set-cookie'],
+    '__Host-noctemblith_manafield_state');
+   const verified = await app.inject({ method: 'GET',
+    url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + callbackUrl.searchParams.get('state'),
+    headers: { cookie: stateCookie } });
+   expect(verified.statusCode).toBe(303);
+   const ticket = new URL(verified.headers.location as string, ownOrigin).searchParams.get('ticket');
+   const proof = cookieFromHeader(verified.headers['set-cookie'], '__Host-noctemblith_manafield_ticket');
+   const finish = await app.inject({ method: 'POST', url: '/auth/manafield/login/finish',
+    payload: { ticket }, headers: { origin: ownOrigin, cookie: proof } });
+   expect(finish.statusCode).toBe(403);
+   expect(finish.json()).toMatchObject({ error: 'privileged_account_requires_local_login' });
+   expect(signin.signin).not.toHaveBeenCalled();
+  } finally { await app.close(); }
+ });
+
  it('issues one-use, browser-bound tickets with no native token in redirect URLs', async () => {
   const { app, links } = createMockService();
   links.set(centralSub, 'local-eventide');
