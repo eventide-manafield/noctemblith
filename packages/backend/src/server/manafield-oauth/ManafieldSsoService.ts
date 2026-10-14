@@ -13,6 +13,9 @@ import { DataSource } from 'typeorm';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import type { UsersRepository } from '@/models/_.js';
+import type { MiLocalUser } from '@/models/User.js';
+import { RoleService } from '@/core/RoleService.js';
+import { SigninService } from '@/server/api/SigninService.js';
 import { AuthenticateService } from '@/server/api/AuthenticateService.js';
 import {
  createManafieldAuthorization,
@@ -108,6 +111,8 @@ export class ManafieldSsoService {
   @Inject(DI.db) private db: DataSource,
   @Inject(DI.usersRepository) private usersRepository: UsersRepository,
   private authenticateService: AuthenticateService,
+  private roleService: RoleService,
+  private signinService: SigninService,
  ) {
   this.settings = process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true'
    ? readManafieldOAuthSettings(process.env, config.url)
@@ -321,9 +326,14 @@ export class ManafieldSsoService {
    }
    const local = await this.liveLocalUser(record.userId);
    if (!local) return reply.code(403).send({ error: 'account_unavailable' });
-   // Deliberately return the same native token type as the existing Misskey
-   // signin-flow, over a same-origin POST, never a redirect or query string.
-   return { token: local.token };
+   // The central account currently has no independent MFA step-up policy.
+   // Never silently bypass local MFA for Noctemblith admin/moderator accounts.
+   if (await this.roleService.isModerator(local)) {
+    return reply.code(403).send({ error: 'privileged_account_requires_local_login' });
+   }
+   // Use the existing sign-in path for login history and notifications.
+   // The native token is returned in the same-origin POST response, never URL.
+   return this.signinService.signin(request, reply, local as MiLocalUser);
   });
  }
 }
