@@ -6,6 +6,7 @@
  *   node --experimental-strip-types --test scripts/noctite-update-center.test.mjs
  */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
@@ -151,4 +152,18 @@ test('UI buttons are real controls but do not grant Docker or host execution pri
 	assert.ok(docker.includes('--from=native-builder /misskey/packages/backend/assets/noctite-build.json'));
 	assert.ok(workflow.includes('NOCTITE_UPDATE_CHANNEL='));
 	assert.doesNotMatch(ui, /docker\.sock|child_process|execSync|spawn\(/);
+});
+
+test('stamped image build metadata is strict JSON and is never cached by the app', () => {
+	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');
+	const match = docker.match(/^RUN (printf .*?) > packages\/backend\/assets\/noctite-build\.json$/m);
+	assert.ok(match, 'Dockerfile must stamp metadata during image build');
+	const generated = execFileSync('sh', ['-c', match[1]], {
+		encoding: 'utf8',
+		env: { ...process.env, NOCTITE_BUILD_SHA: oldSha, NOCTITE_UPDATE_CHANNEL: 'noctite/dev' },
+	});
+	assert.deepEqual(JSON.parse(generated), { sha: oldSha, channel: 'noctite/dev' });
+	const server = readFileSync(new URL('../packages/backend/src/server/web/ClientServerService.ts', import.meta.url), 'utf8');
+	assert.match(server, /reply\.header\('Cache-Control', 'no-store'\)/);
+	assert.match(server, /reply\.sendFile\('\/noctite-build\.json', this\.staticAssets, \{ cacheControl: false \}\)/);
 });

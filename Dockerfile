@@ -44,7 +44,7 @@ COPY --link . ./
 # The runtime serves this non-secret metadata at /noctite-build.json.
 ARG NOCTITE_BUILD_SHA=unknown
 ARG NOCTITE_UPDATE_CHANNEL=noctite/dev
-RUN printf '{"sha":"%s","channel":"%s"}\\n' "$NOCTITE_BUILD_SHA" "$NOCTITE_UPDATE_CHANNEL" > packages/backend/assets/noctite-build.json
+RUN printf '{"sha":"%s","channel":"%s"}' "$NOCTITE_BUILD_SHA" "$NOCTITE_UPDATE_CHANNEL" > packages/backend/assets/noctite-build.json
 
 RUN pnpm build
 RUN rm -rf .git/
