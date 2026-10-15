@@ -148,12 +148,16 @@ export function registerHttpAccessLog(fastify: FastifyInstance, manager: LogMana
 
 		const bodyConfiguration = manager.getAccessLogConfiguration().bodies;
 		const state = states.get(request) ?? {};
-		if (bodyConfiguration.request && !('requestBody' in state)) {
+		// Never capture the browser-bound OAuth code/ticket flow or the native
+		// sign-in token response, including in development access logs.
+		// Route logging still records method, route template, status and duration.
+		const sensitiveManafieldFlow = request.url.split('?', 1)[0].startsWith('/auth/manafield/');
+		if (!sensitiveManafieldFlow && bodyConfiguration.request && !('requestBody' in state)) {
 			// ActivityPubもFastifyが解析したrequest.bodyだけを対象にし、rawBodyやheaderは参照しません。
 			const captured = captureBody(request.body, request.headers['content-type']);
 			if (captured !== undefined) state.requestBody = captured.value;
 		}
-		if (bodyConfiguration.response && !('responseBody' in state)) {
+		if (!sensitiveManafieldFlow && bodyConfiguration.response && !('responseBody' in state)) {
 			const captured = captureBody(payload, reply.getHeader('content-type'));
 			if (captured !== undefined) state.responseBody = captured.value;
 		}
