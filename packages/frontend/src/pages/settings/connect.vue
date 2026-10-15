@@ -17,6 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<p v-if="manafieldLinked">이 Noctemblith 계정은 마나필드 계정과 연결되어 있습니다.</p>
 					<p v-else>계정을 연결하려면 현재 Noctemblith 계정과 마나필드 계정의 소유권을 모두 확인해야 합니다.</p>
 					<p v-if="manafieldMessage" role="status">{{ manafieldMessage }}</p>
+					<a v-if="manafieldHandleRequired" href="https://manafield.studio/account/profile">마나필드에서 공개 프로필 핸들 등록하기</a>
 					<MkButton v-if="!manafieldLinked" primary :disabled="manafieldBusy" @click="startManafieldLink">
 						{{ manafieldBusy ? '연결 준비 중…' : '마나필드 계정 연결하기' }}
 					</MkButton>
@@ -94,6 +95,7 @@ const manafieldEnabled = ref(false);
 const manafieldLinked = ref(false);
 const manafieldBusy = ref(false);
 const manafieldMessage = ref('');
+const manafieldHandleRequired = ref(false);
 
 async function getManafieldState() {
  try {
@@ -117,11 +119,13 @@ async function getManafieldState() {
   const feedback = new URL(window.location.href).searchParams.get('manafield');
   const messages: Record<string, string> = {
    linked: '마나필드 계정 연결이 완료되었습니다.',
+   'handle-required': '마나필드 공개 프로필 핸들을 최초 등록한 뒤 다시 계정을 연결해 주세요.',
    conflict: '계정 정보가 일치하지 않거나 이미 연결된 계정이 있어 연결할 수 없습니다.',
    denied: '마나필드 인증이 취소되었습니다.',
    failed: '연결 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
   };
   if (feedback && messages[feedback]) manafieldMessage.value = messages[feedback];
+  manafieldHandleRequired.value = feedback === 'handle-required';
  } catch {
   // The integration is optional; other settings must remain functional.
  }

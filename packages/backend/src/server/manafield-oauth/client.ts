@@ -14,9 +14,14 @@ export interface ManafieldOAuthSettings {
 	readonly callbackUrl: string;
 }
 
+// Account Core's preferred_username is the login ID, never the public Profile handle.
 export interface ManafieldIdentity {
 	readonly sub: string;
 	readonly preferredUsername: string;
+}
+
+export interface ManafieldVerifiedIdentity extends ManafieldIdentity {
+	readonly publicHandle: string | null;
 }
 
 const clientIdPattern = /^[a-zA-Z0-9._-]{1,100}$/;
@@ -24,9 +29,29 @@ const oauthCodePattern = /^[a-zA-Z0-9_-]{22,128}$/;
 const oauthStatePattern = /^[a-zA-Z0-9_-]{43}$/;
 const pkceVerifierPattern = /^[a-zA-Z0-9_-]{43,128}$/;
 const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
-// Account Core owns this immutable canonical lowercase handle policy.
+// Account Core username rules (only for authenticating central login ID).
 const centralHandlePattern = /^[a-z0-9_]{1,20}$/;
 const localHandlePattern = /^[a-z0-9_]{1,20}$/i;
+
+// The immutable Account Profile public handle is the actor name. It must
+// use the Noctemblith-compatible canonical lowercase alphabet.
+const publicHandlePattern = /^[a-z0-9_]{1,20}$/;
+
+/** Validate the separately verified Account Profile handle returned by Core. */
+export function parseManafieldProfileHandle(value: unknown, subjectUuid: string): string | null {
+	if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+		throw new Error('Invalid profile handle response');
+	}
+	const claims = value as Record<string, unknown>;
+	if (typeof claims.sub !== 'string' || claims.sub.toLowerCase() !== subjectUuid) {
+		throw new Error('Public handle subject mismatch');
+	}
+	if (claims.profile_handle === null) return null;
+	if (typeof claims.profile_handle !== 'string' || !publicHandlePattern.test(claims.profile_handle)) {
+		throw new Error('Invalid public Profile handle');
+	}
+	return claims.profile_handle;
+}
 
 /** UUID ownership is necessary but NOT sufficient: block AB-BA account swapping. */
 export function matchesManafieldHandle(centralHandle: string, localUsername: string): boolean {

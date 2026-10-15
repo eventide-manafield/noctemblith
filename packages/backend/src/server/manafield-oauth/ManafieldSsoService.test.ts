@@ -99,7 +99,8 @@ function createMockService() {
  return { app, user, otherUser, createdUsers, redis, db, links, role, signin, signup };
 }
 
-function stubIssuer(identity = { sub: centralSub, preferred_username: 'eventide' }) {
+function stubIssuer(identity: { sub: string; preferred_username: string; profile_handle?: string | null } =
+ { sub: centralSub, preferred_username: 'eventide' }) {
  const mock = vi.fn(async (value: string | URL) => {
   const pathname = new URL(String(value)).pathname;
   if (pathname === '/account/oauth/token') {
@@ -107,7 +108,12 @@ function stubIssuer(identity = { sub: centralSub, preferred_username: 'eventide'
     { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (pathname === '/account/oauth/userinfo') {
-   return new Response(JSON.stringify(identity),
+   return new Response(JSON.stringify({ sub: identity.sub, preferred_username: identity.preferred_username }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  if (pathname === '/account/oauth/profile-handle') {
+   const handle = Object.hasOwn(identity, 'profile_handle') ? identity.profile_handle : identity.preferred_username;
+   return new Response(JSON.stringify({ sub: identity.sub, profile_handle: handle }),
     { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   throw new Error('Unexpected external OAuth target');
@@ -182,7 +188,7 @@ describe('Manafield dev SSO existing-account ownership', () => {
    expect(linked.statusCode).toBe(303);
    expect(linked.headers.location).toBe('/settings/connect?manafield=linked');
    expect(links.get(centralSub)).toBe('local-eventide');
-   expect(issuer).toHaveBeenCalledTimes(2);
+   expect(issuer).toHaveBeenCalledTimes(3);
    expect((await app.inject({ method: 'GET', url, headers: { cookie: stateCookie } })).statusCode).toBe(400);
    expect(links.size).toBe(1);
   } finally { await app.close(); }
@@ -311,7 +317,8 @@ describe('Manafield consent-based just-in-time account provisioning', () => {
  const newSub = '00000000-0000-4000-8000-000000000055';
  const newIdentity = { sub: newSub, preferred_username: 'newobserver' };
 
- async function requestSignup(app: ReturnType<typeof Fastify>, identity = newIdentity) {
+ async function requestSignup(app: ReturnType<typeof Fastify>,
+  identity: { sub: string; preferred_username: string; profile_handle?: string | null } = newIdentity) {
   stubIssuer(identity);
   const start = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
   expect(start.statusCode).toBe(303);
@@ -385,6 +392,93 @@ describe('Manafield consent-based just-in-time account provisioning', () => {
    expect(result.json()).toMatchObject({ error: 'central_identity_changed' });
    expect(signup.signup).not.toHaveBeenCalled();
    expect(links.size).toBe(0);
+  } finally { await app.close(); }
+ });
+
+ it('uses the verified Profile handle even when central login ID is different', async () => {
+  const { app, createdUsers, links } = createMockService();
+  try {
+   const callback = await requestSignup(app, {
+    sub: newSub, preferred_username: 'login_not_public', profile_handle: 'newobserver',
+   });
+   expect(callback.headers.location).toBe('/auth/manafield/finish?status=signup');
+   const cookie = cookieFromHeader(callback.headers['set-cookie'], '__Host-noctemblith_manafield_provision');
+   const response = await app.inject({ method: 'POST', url: '/auth/manafield/provision/status',
+    payload: {}, headers: { origin: ownOrigin, cookie } });
+   expect(response.statusCode).toBe(200);
+   expect(response.json().actor).toBe('@newobserver@noctemblith-dev.manafield.studio');
+   const created = await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: true }, headers: { origin: ownOrigin, cookie } });
+   expect(created.statusCode).toBe(200);
+   expect(createdUsers.map(u => u.username)).toEqual(['newobserver']);
+   expect(links.get(newSub)).toBe('jit-newobserver');
+  } finally { await app.close(); }
+ });
+
+ it('requires a registered Profile public handle before onboarding or linking', async () => {
+  const { app, createdUsers, links } = createMockService();
+  try {
+   const callback = await requestSignup(app, {
+    sub: newSub, preferred_username: 'some_login_id', profile_handle: null,
+   });
+   expect(callback.statusCode).toBe(303);
+   expect(callback.headers.location).toBe('/auth/manafield/finish?status=handle-required');
+   expect(createdUsers).toHaveLength(0);
+   expect(links.size).toBe(0);
+
+   stubIssuer({ sub: centralSub, preferred_username: 'another_login', profile_handle: null });
+   const start = await app.inject({ method: 'POST', url: '/auth/manafield/link/start',
+    payload: {}, headers: { origin: ownOrigin, authorization: 'Bearer ' + nativeToken } });
+   const target = new URL(start.json().authorizationUrl);
+   const stateCookie = cookieFromHeader(start.headers['set-cookie'], '__Host-noctemblith_manafield_state');
+   const linked = await app.inject({ method: 'GET',
+    url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + target.searchParams.get('state'),
+    headers: { cookie: stateCookie } });
+   expect(linked.statusCode).toBe(303);
+   expect(linked.headers.location).toBe('/settings/connect?manafield=handle-required');
+   expect(links.size).toBe(0);
+  } finally { await app.close(); }
+ });
+
+ it('fails closed when the verified public handle changes before consent completes', async () => {
+  const { app, createdUsers, links } = createMockService();
+  try {
+   const callback = await requestSignup(app, {
+    sub: newSub, preferred_username: 'login_not_public', profile_handle: 'newobserver',
+   });
+   const cookie = cookieFromHeader(callback.headers['set-cookie'], '__Host-noctemblith_manafield_provision');
+   stubIssuer({ sub: newSub, preferred_username: 'login_not_public', profile_handle: 'someone_else' });
+   const result = await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: true }, headers: { cookie, origin: ownOrigin } });
+   expect(result.statusCode).toBe(403);
+   expect(result.json()).toMatchObject({ error: 'central_identity_changed' });
+   expect(createdUsers).toHaveLength(0);
+   expect(links.size).toBe(0);
+  } finally { await app.close(); }
+ });
+
+ it('rechecks the Profile handle when redeeming an SSO ticket', async () => {
+  const { app, links, signin } = createMockService();
+  links.set(centralSub, 'local-eventide');
+  stubIssuer({ sub: centralSub, preferred_username: 'different_login', profile_handle: 'eventide' });
+  try {
+   const start = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+   const target = new URL(start.headers.location as string);
+   const cookie = cookieFromHeader(start.headers['set-cookie'], '__Host-noctemblith_manafield_state');
+   const callback = await app.inject({ method: 'GET',
+    url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + target.searchParams.get('state'),
+    headers: { cookie } });
+   expect(callback.statusCode).toBe(303);
+   const url = new URL(callback.headers.location as string, ownOrigin);
+   const ticket = url.searchParams.get('ticket');
+   expect(ticket).toMatch(/^[A-Za-z0-9_-]{43}$/);
+   const proof = cookieFromHeader(callback.headers['set-cookie'], '__Host-noctemblith_manafield_ticket');
+   stubIssuer({ sub: centralSub, preferred_username: 'different_login', profile_handle: 'other_handle' });
+   const finish = await app.inject({ method: 'POST', url: '/auth/manafield/login/finish',
+    payload: { ticket }, headers: { cookie: proof, origin: ownOrigin } });
+   expect(finish.statusCode).toBe(403);
+   expect(finish.json()).toMatchObject({ error: 'identity_conflict' });
+   expect(signin.signin).not.toHaveBeenCalled();
   } finally { await app.close(); }
  });
 });

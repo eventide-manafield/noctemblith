@@ -6,8 +6,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 <div class="_gaps_m" style="max-width: 520px; margin: 4rem auto; padding: 24px;">
  <h1>마나필드 로그인</h1>
  <p role="status">{{ message }}</p>
+ <div v-if="handleRequired" class="_gaps_m">
+  <p>마나필드 공개 프로필 핸들이 아직 등록되지 않았습니다. 먼저 마나필드에서 핸들을 최초 등록해 주세요. 등록한 공개 핸들은 녹템블리스 사용자명과 ActivityPub 주소로 사용되며, 등록 후에는 직접 변경할 수 없습니다.</p>
+  <a href="https://manafield.studio/account/profile">마나필드 공개 프로필 핸들 등록하기</a>
+  <p>등록을 마친 뒤 이 페이지로 돌아와 마나필드 계정으로 다시 로그인해 주세요.</p>
+ </div>
  <div v-if="signupAvailable" class="_gaps_m">
   <p><strong>생성할 계정:</strong> {{ signupActor }}</p>
+  <p>마나필드에서 최초 등록한 공개 프로필 핸들을 녹템블리스 계정 주소로 사용합니다. 마나필드 로그인 ID와 다를 수 있으며, 녹템블리스에서 임의로 변경할 수 없습니다.</p>
   <p>이 계정은 다른 ActivityPub 서버에서도 검색하거나 팔로우할 수 있는 공개 연합 신원입니다. 작성한 공개 게시물과 프로필은 다른 서버로 전달될 수 있으며, 마나필드 계정을 삭제해도 다른 서버에 전달된 기록이 자동으로 삭제되는 것은 아닙니다.</p>
   <p>마나필드에서 인증된 공통 핸들로만 계정이 생성되며, 녹템블리스 전용 비밀번호는 따로 발급되지 않습니다.</p>
   <label>
@@ -30,6 +36,7 @@ import MkButton from '@/components/MkButton.vue';
 
 const message = ref('로그인 인증을 완료하는 중입니다…');
 const signupAvailable = ref(false);
+const handleRequired = ref(false);
 const signupActor = ref('');
 const signupConsent = ref(false);
 const signupBusy = ref(false);
@@ -110,7 +117,10 @@ onMounted(async () => {
   return;
  }
  if (!ticket) {
-  message.value = status === 'unlinked'
+  handleRequired.value = status === 'handle-required';
+  message.value = status === 'handle-required'
+   ? '녹템블리스 계정을 이용하려면 마나필드 공개 프로필 핸들을 먼저 등록해야 합니다.'
+   : status === 'unlinked'
    ? '같은 핸들의 기존 Noctemblith 계정이 이미 있어 신규 계정을 생성할 수 없습니다. 기존 계정으로 로그인한 뒤 설정 → 서비스 연동에서 두 계정의 소유권을 확인하고 연결해 주세요.'
    : status === 'denied'
    ? '마나필드 인증이 취소되었습니다.'

@@ -11,6 +11,7 @@ import {
 	matchesManafieldOAuthState,
 	matchesManafieldHandle,
 	parseManafieldIdentity,
+	parseManafieldProfileHandle,
 	readManafieldOAuthSettings,
 } from './client.js';
 
@@ -105,6 +106,23 @@ describe('Manafield Account OAuth2 client foundation', () => {
 			null,
 		]) {
 			expect(() => parseManafieldIdentity(input)).toThrow();
+		}
+	});
+
+	it('parses Profile public handles separately from Account Core login usernames', () => {
+		const sub = '00000000-0000-4000-8000-000000000001';
+		expect(parseManafieldIdentity({ sub, preferred_username: 'login_user' })).toEqual({
+			sub, preferredUsername: 'login_user',
+		});
+		expect(parseManafieldProfileHandle({ sub, profile_handle: 'eventide' }, sub)).toBe('eventide');
+		expect(parseManafieldProfileHandle({ sub, profile_handle: null }, sub)).toBeNull();
+		for (const invalid of [
+			{}, { sub, profile_handle: undefined }, { sub, profile_handle: '' },
+			{ sub, profile_handle: 'with-dash' }, { sub, profile_handle: 'with.dot' },
+			{ sub, profile_handle: 'a'.repeat(21) },
+			{ sub: '00000000-0000-4000-8000-000000000002', profile_handle: 'eventide' },
+		]) {
+			expect(() => parseManafieldProfileHandle(invalid, sub)).toThrow();
 		}
 	});
 

@@ -22,9 +22,10 @@ import {
  createManafieldAuthorization,
  createManafieldTokenRequest,
  parseManafieldIdentity,
+ parseManafieldProfileHandle,
  readManafieldOAuthSettings,
  matchesManafieldHandle,
- type ManafieldIdentity,
+ type ManafieldVerifiedIdentity,
  type ManafieldOAuthSettings,
 } from './client.js';
 import {
@@ -44,7 +45,7 @@ const validOpaque = /^[A-Za-z0-9_-]{43}$/;
 
 type OAuthMode = 'link' | 'login';
 type FlowRecord = { mode: OAuthMode; verifier: string; proofHash: string; userId?: string };
-type TicketRecord = { userId: string; subjectUuid: string; canonicalHandle: string; proofHash: string };
+type TicketRecord = { userId: string; subjectUuid: string; canonicalHandle: string; accessToken: string; proofHash: string };
 type PendingProvision = { subjectUuid: string; canonicalHandle: string; accessToken: string };
 
 const secret = () => randomBytes(32).toString('base64url');
@@ -200,7 +201,7 @@ export class ManafieldSsoService {
  }
 
  /** Revalidate account state immediately before public actor provisioning. */
- private async revalidateIdentity(accessToken: string): Promise<ManafieldIdentity> {
+ private async revalidateIdentity(accessToken: string): Promise<ManafieldVerifiedIdentity> {
   if (!this.settings || !validOpaque.test(accessToken)) throw new Error('Invalid central proof');
   const res = await fetch(new URL('/account/oauth/userinfo', this.settings.accountOrigin), {
    method: 'GET',
@@ -209,7 +210,16 @@ export class ManafieldSsoService {
    cache: 'no-store',
    signal: AbortSignal.timeout(6000),
   });
-  return parseManafieldIdentity(await boundedJson(res));
+  const identity = parseManafieldIdentity(await boundedJson(res));
+  // A separate, authenticated OAuth endpoint queries Profile through the
+  // Core↔Profile trusted service channel. Never derive an actor from login ID.
+  const profileRes = await fetch(new URL('/account/oauth/profile-handle', this.settings.accountOrigin), {
+   method: 'GET',
+   headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },
+   redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(6000),
+  });
+  const handle = parseManafieldProfileHandle(await boundedJson(profileRes), identity.sub);
+  return { ...identity, publicHandle: handle };
  }
 
  private provisionKey(proof: string): string {
@@ -217,20 +227,22 @@ export class ManafieldSsoService {
   return 'noctemblith:manafield:provision:' + digest(proof);
  }
 
- private async stageProvision(reply: FastifyReply, identity: ManafieldIdentity, accessToken: string): Promise<void> {
+ private async stageProvision(reply: FastifyReply, identity: ManafieldVerifiedIdentity, accessToken: string): Promise<void> {
   const browserProof = createBrowserProof();
+  if (identity.publicHandle == null) throw new Error('Public Profile handle required');
   const payload: PendingProvision = {
-   subjectUuid: identity.sub, canonicalHandle: identity.preferredUsername, accessToken,
+   subjectUuid: identity.sub, canonicalHandle: identity.publicHandle, accessToken,
   };
   const result = await this.redis.set(this.provisionKey(browserProof), JSON.stringify(payload), 'EX', flowTTL, 'NX');
   if (result !== 'OK') throw new Error('Provisioning session unavailable');
   setProofCookie(reply, provisionCookieName, browserProof, flowTTL);
  }
 
- private async issueLoginTicket(reply: FastifyReply, account: MiLocalUser, identity: ManafieldIdentity): Promise<string> {
+ private async issueLoginTicket(reply: FastifyReply, account: MiLocalUser, identity: ManafieldVerifiedIdentity, accessToken: string): Promise<string> {
   const ticket = secret();
   const browserProof = createBrowserProof();
-  const value: TicketRecord = { userId: account.id, subjectUuid: identity.sub, canonicalHandle: identity.preferredUsername, proofHash: digest(browserProof) };
+  if (identity.publicHandle == null) throw new Error('Public Profile handle required');
+  const value: TicketRecord = { userId: account.id, subjectUuid: identity.sub, canonicalHandle: identity.publicHandle, accessToken, proofHash: digest(browserProof) };
   const ok = await this.redis.set('noctemblith:manafield:login-ticket:' + ticket,
    JSON.stringify(value), 'EX', loginTicketTTL, 'NX');
   if (ok !== 'OK') throw new Error('One-time login ticket unavailable');
@@ -238,10 +250,10 @@ export class ManafieldSsoService {
   return ticket;
  }
 
- private async linkUser(userId: string, verified: ManafieldIdentity): Promise<'linked' | 'conflict'> {
+ private async linkUser(userId: string, verified: ManafieldVerifiedIdentity): Promise<'linked' | 'conflict'> {
   const current = await this.liveLocalUser(userId);
   // Never claim an existing native actor merely because the UUID is verified.
-  if (!current || !matchesManafieldHandle(verified.preferredUsername, current.username)) return 'conflict';
+  if (!current || verified.publicHandle == null || !matchesManafieldHandle(verified.publicHandle, current.username)) return 'conflict';
   const subjectUuid = verified.sub;
 
   // Insert is atomic. Both UNIQUE constraints prevent concurrent claiming
@@ -261,7 +273,7 @@ export class ManafieldSsoService {
    currentLink[0].sub === subjectUuid && currentLink[0].userId === userId ? 'linked' : 'conflict';
  }
 
- private async linkedUser(verified: ManafieldIdentity) {
+ private async linkedUser(verified: ManafieldVerifiedIdentity) {
   const links = await this.db.query(
    'SELECT "userId" FROM "manafield_identity_link" WHERE "providerId" = $1 AND "subjectUuid" = $2::uuid',
    [providerId, verified.sub],
@@ -269,7 +281,7 @@ export class ManafieldSsoService {
   if (links.length === 0) return null;
   if (links.length !== 1) throw new Error('Ambiguous Manafield identity mapping');
   const user = await this.liveLocalUser(links[0].userId);
-  if (!user || !matchesManafieldHandle(verified.preferredUsername, user.username)) {
+  if (!user || verified.publicHandle == null || !matchesManafieldHandle(verified.publicHandle, user.username)) {
    throw new Error('Linked Noctemblith handle conflicts with Manafield identity');
   }
   return user;
@@ -341,6 +353,9 @@ export class ManafieldSsoService {
     }
     try {
      const { identity: verified, accessToken } = await this.userInfo(request.query.code, record.verifier);
+     if (verified.publicHandle == null) {
+      return reply.code(303).header('Location', safeRedirectTarget(record.mode, 'handle-required')).send();
+     }
      if (record.mode === 'link') {
       if (!record.userId) return reply.code(400).send('Local account missing');
       const linked = await this.linkUser(record.userId, verified);
@@ -351,13 +366,13 @@ export class ManafieldSsoService {
       // Same handle may already belong to an existing, unlinked local actor.
       // Do not claim it without independent proof of its native ownership.
       const occupied = await this.usersRepository.findOneBy({
-       usernameLower: verified.preferredUsername, host: IsNull(),
+       usernameLower: verified.publicHandle, host: IsNull(),
       });
       if (occupied) return reply.code(303).header('Location', safeRedirectTarget('login', 'unlinked')).send();
       await this.stageProvision(reply, verified, accessToken);
       return reply.code(303).header('Location', safeRedirectTarget('login', 'signup')).send();
      }
-     const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified);
+     const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified, accessToken);
      return reply.code(303).header('Location', '/auth/manafield/finish?ticket=' + encodeURIComponent(ticket)).send();
     } catch {
      return reply.code(303).header('Location', safeRedirectTarget(record.mode, 'failed')).send();
@@ -407,8 +422,9 @@ export class ManafieldSsoService {
    try {
     // Account Core is the authority at the moment of account creation.
     const verified = await this.revalidateIdentity(pending.accessToken);
-    if (verified.sub !== pending.subjectUuid ||
-        !matchesManafieldHandle(verified.preferredUsername, pending.canonicalHandle)) {
+    const publicHandle = verified.publicHandle;
+    if (publicHandle === null || verified.sub !== pending.subjectUuid ||
+        !matchesManafieldHandle(publicHandle, pending.canonicalHandle)) {
      return reply.code(403).send({ error: 'central_identity_changed' });
     }
     const root = await this.db.query('SELECT "rootUserId" FROM "meta" LIMIT 1') as Array<{ rootUserId: string | null }>;
@@ -416,14 +432,14 @@ export class ManafieldSsoService {
      return reply.code(503).send({ error: 'instance_initial_setup_required' });
     }
     if (await this.linkedUser(verified)) return reply.code(409).send({ error: 'already_linked' });
-    if (await this.usersRepository.findOneBy({ usernameLower: verified.preferredUsername, host: IsNull() })) {
+    if (await this.usersRepository.findOneBy({ usernameLower: publicHandle, host: IsNull() })) {
      return reply.code(409).send({ error: 'handle_occupied' });
     }
     // Normal SignupService owns keys, password hashing and all Misskey actor
     // invariants. The UUID link is added INSIDE the same DB transaction to
     // avoid orphaned public actors if a concurrent signup claims the handle.
     const { account } = await this.signupService.signup({
-     username: verified.preferredUsername,
+     username: publicHandle,
      password: secret(), // Unknown, high-entropy native password; login via Manafield.
      onCreatedInTransaction: async (manager, user) => {
       const linked = await manager.query(
@@ -434,7 +450,7 @@ export class ManafieldSsoService {
       if (linked.length !== 1) throw new Error('Identity link collision; roll back actor');
      },
     });
-    const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified);
+    const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified, pending.accessToken);
     return { ticket };
    } catch {
     // Fail closed. OAuth needs restarting after a rejected/expired attempt.
@@ -469,9 +485,14 @@ export class ManafieldSsoService {
     if (typeof record.subjectUuid !== 'string' || typeof record.canonicalHandle !== 'string') {
      return reply.code(403).send({ error: 'identity_conflict' });
     }
-    local = await this.linkedUser({
-     sub: record.subjectUuid, preferredUsername: record.canonicalHandle,
-    });
+    if (typeof record.accessToken !== 'string' || !validOpaque.test(record.accessToken)) {
+     return reply.code(403).send({ error: 'identity_conflict' });
+    }
+    const verified = await this.revalidateIdentity(record.accessToken);
+    if (verified.sub !== record.subjectUuid || verified.publicHandle !== record.canonicalHandle) {
+     return reply.code(403).send({ error: 'identity_conflict' });
+    }
+    local = await this.linkedUser(verified);
    } catch {
     return reply.code(403).send({ error: 'identity_conflict' });
    }
