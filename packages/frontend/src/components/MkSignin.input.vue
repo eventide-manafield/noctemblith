@@ -43,8 +43,9 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="manafieldAvailable" class="_gaps_s">
 			<div :class="$style.orHr"><p :class="$style.orMsg">{{ i18n.ts.or }}</p></div>
 			<MkButton type="button" rounded large primary style="margin: 0 auto;" @click="goToManafieldLogin">
-				마나필드 계정으로 계속하기
+				마나필드 계정으로 시작하기
 			</MkButton>
+			<p>마나필드 계정으로 로그인하거나 새 녹템블리스 계정을 생성할 수 있습니다.</p>
 		</div>
 
 		<!-- パスワードレスログイン -->
