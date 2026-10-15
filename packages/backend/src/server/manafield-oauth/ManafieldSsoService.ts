@@ -422,8 +422,9 @@ export class ManafieldSsoService {
    try {
     // Account Core is the authority at the moment of account creation.
     const verified = await this.revalidateIdentity(pending.accessToken);
-    if (verified.sub !== pending.subjectUuid ||
-        !matchesManafieldHandle(verified.publicHandle ?? "", pending.canonicalHandle)) {
+    const publicHandle = verified.publicHandle;
+    if (publicHandle === null || verified.sub !== pending.subjectUuid ||
+        !matchesManafieldHandle(publicHandle, pending.canonicalHandle)) {
      return reply.code(403).send({ error: 'central_identity_changed' });
     }
     const root = await this.db.query('SELECT "rootUserId" FROM "meta" LIMIT 1') as Array<{ rootUserId: string | null }>;
@@ -431,14 +432,14 @@ export class ManafieldSsoService {
      return reply.code(503).send({ error: 'instance_initial_setup_required' });
     }
     if (await this.linkedUser(verified)) return reply.code(409).send({ error: 'already_linked' });
-    if (await this.usersRepository.findOneBy({ usernameLower: verified.publicHandle, host: IsNull() })) {
+    if (await this.usersRepository.findOneBy({ usernameLower: publicHandle, host: IsNull() })) {
      return reply.code(409).send({ error: 'handle_occupied' });
     }
     // Normal SignupService owns keys, password hashing and all Misskey actor
     // invariants. The UUID link is added INSIDE the same DB transaction to
     // avoid orphaned public actors if a concurrent signup claims the handle.
     const { account } = await this.signupService.signup({
-     username: verified.publicHandle!,
+     username: publicHandle,
      password: secret(), // Unknown, high-entropy native password; login via Manafield.
      onCreatedInTransaction: async (manager, user) => {
       const linked = await manager.query(
