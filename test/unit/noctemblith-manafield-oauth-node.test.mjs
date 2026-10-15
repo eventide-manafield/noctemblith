@@ -68,7 +68,7 @@ test('parses only stable identity UUID + username claims', () => {
 	assert.throws(() => parseManafieldIdentity({ sub: id, email: 'unknown@example.invalid' }));
 });
 
-test('Manafield SSO UI messages use polite Korean and disclose unavailable JIT signup', () => {
+test('Manafield SSO UI uses polite Korean and requires explicit ActivityPub consent', () => {
 	const files = [
 		'packages/frontend/src/pages/manafield-login-finish.vue',
 		'packages/frontend/src/pages/settings/connect.vue',
@@ -83,11 +83,32 @@ test('Manafield SSO UI messages use polite Korean and disclose unavailable JIT s
 			'Informal end-user Korean copy found in ' + files[index]);
 	}
 	const [finish, connect, signin] = sources;
-	assert.match(finish, /신규 계정 생성 기능은 아직 제공되지 않습니다/);
-	assert.match(finish, /기존 Noctemblith 계정이 있다면/);
+	assert.match(finish, /마나필드 계정 인증이 완료되었습니다/);
+	assert.match(finish, /공개 ActivityPub 계정 생성/);
+	assert.match(finish, /동의하고 녹템블리스 계정 생성/);
+	assert.match(finish, /auth\/manafield\/provision\/confirm/);
+	assert.match(finish, /signupConsent/);
+	assert.doesNotMatch(finish, /신규 계정 생성 기능은 아직 제공되지 않습니다/);
+	assert.match(finish, /같은 핸들의 기존 Noctemblith 계정이 이미 있어/);
 	assert.match(finish, /관리자 및 모더레이터 계정은 보안 정책에 따라/);
 	assert.match(connect, /Noctemblith 계정과 마나필드 계정의 소유권을 모두 확인해야 합니다/);
 	assert.match(connect, /마나필드 계정 연결이 완료되었습니다/);
 	assert.match(signin, /v-if="manafieldAvailable"/);
-	assert.match(signin, /마나필드 계정으로 계속하기/);
+	assert.match(signin, /마나필드 계정으로 시작하기/);
+	assert.match(signin, /새 녹템블리스 계정을 생성할 수 있습니다/);
+});
+
+
+test('integrated native account creation paths are server-side gated, standalone remains opt-out', () => {
+	const signup = readFileSync(new URL('../../packages/backend/src/server/api/SignupApiService.ts', import.meta.url), 'utf8');
+	const admin = readFileSync(new URL('../../packages/backend/src/server/api/endpoints/admin/accounts/create.ts', import.meta.url), 'utf8');
+	const core = readFileSync(new URL('../../packages/backend/src/core/SignupService.ts', import.meta.url), 'utf8');
+	const sso = readFileSync(new URL('../../packages/backend/src/server/manafield-oauth/ManafieldSsoService.ts', import.meta.url), 'utf8');
+	assert.equal((signup.match(/NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true'/g) ?? []).length, 2);
+	assert.match(admin, /NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true'/);
+	assert.match(core, /opts\.onCreatedInTransaction\?\.\(transactionalEntityManager, account\)/);
+	assert.match(sso, /\/auth\/manafield\/provision\/status/);
+	assert.match(sso, /\/auth\/manafield\/provision\/confirm/);
+	assert.match(sso, /this\.revalidateIdentity\(pending\.accessToken\)/);
+	assert.match(sso, /onCreatedInTransaction/);
 });

@@ -9,13 +9,14 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import * as Redis from 'ioredis';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import type { Config } from '@/config.js';
 import { DI } from '@/di-symbols.js';
 import type { UsersRepository } from '@/models/_.js';
 import type { MiLocalUser } from '@/models/User.js';
 import { RoleService } from '@/core/RoleService.js';
 import { SigninService } from '@/server/api/SigninService.js';
+import { SignupService } from '@/core/SignupService.js';
 import { AuthenticateService } from '@/server/api/AuthenticateService.js';
 import {
  createManafieldAuthorization,
@@ -38,11 +39,13 @@ const flowTTL = 5 * 60;
 const loginTicketTTL = 60;
 const stateCookieName = '__Host-noctemblith_manafield_state';
 const ticketCookieName = '__Host-noctemblith_manafield_ticket';
+const provisionCookieName = '__Host-noctemblith_manafield_provision';
 const validOpaque = /^[A-Za-z0-9_-]{43}$/;
 
 type OAuthMode = 'link' | 'login';
 type FlowRecord = { mode: OAuthMode; verifier: string; proofHash: string; userId?: string };
 type TicketRecord = { userId: string; subjectUuid: string; canonicalHandle: string; proofHash: string };
+type PendingProvision = { subjectUuid: string; canonicalHandle: string; accessToken: string };
 
 const secret = () => randomBytes(32).toString('base64url');
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -115,6 +118,7 @@ export class ManafieldSsoService {
   private authenticateService: AuthenticateService,
   private roleService: RoleService,
   private signinService: SigninService,
+  private signupService: SignupService,
  ) {
   this.settings = process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true'
    ? readManafieldOAuthSettings(process.env, config.url)
@@ -191,14 +195,47 @@ export class ManafieldSsoService {
       !validOpaque.test(token.access_token) || token.expires_in !== 900) {
    throw new Error('Invalid OAuth token claims');
   }
+  const identity = await this.revalidateIdentity(token.access_token);
+  return { identity, accessToken: token.access_token };
+ }
+
+ /** Revalidate account state immediately before public actor provisioning. */
+ private async revalidateIdentity(accessToken: string): Promise<ManafieldIdentity> {
+  if (!this.settings || !validOpaque.test(accessToken)) throw new Error('Invalid central proof');
   const res = await fetch(new URL('/account/oauth/userinfo', this.settings.accountOrigin), {
    method: 'GET',
-   headers: { 'Authorization': 'Bearer ' + token.access_token, 'Accept': 'application/json' },
+   headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },
    redirect: 'error',
    cache: 'no-store',
    signal: AbortSignal.timeout(6000),
   });
   return parseManafieldIdentity(await boundedJson(res));
+ }
+
+ private provisionKey(proof: string): string {
+  // The browser receives only an HttpOnly cookie; no central bearer or UUID in URLs.
+  return 'noctemblith:manafield:provision:' + digest(proof);
+ }
+
+ private async stageProvision(reply: FastifyReply, identity: ManafieldIdentity, accessToken: string): Promise<void> {
+  const browserProof = createBrowserProof();
+  const payload: PendingProvision = {
+   subjectUuid: identity.sub, canonicalHandle: identity.preferredUsername, accessToken,
+  };
+  const result = await this.redis.set(this.provisionKey(browserProof), JSON.stringify(payload), 'EX', flowTTL, 'NX');
+  if (result !== 'OK') throw new Error('Provisioning session unavailable');
+  setProofCookie(reply, provisionCookieName, browserProof, flowTTL);
+ }
+
+ private async issueLoginTicket(reply: FastifyReply, account: MiLocalUser, identity: ManafieldIdentity): Promise<string> {
+  const ticket = secret();
+  const browserProof = createBrowserProof();
+  const value: TicketRecord = { userId: account.id, subjectUuid: identity.sub, canonicalHandle: identity.preferredUsername, proofHash: digest(browserProof) };
+  const ok = await this.redis.set('noctemblith:manafield:login-ticket:' + ticket,
+   JSON.stringify(value), 'EX', loginTicketTTL, 'NX');
+  if (ok !== 'OK') throw new Error('One-time login ticket unavailable');
+  setProofCookie(reply, ticketCookieName, browserProof, loginTicketTTL);
+  return ticket;
  }
 
  private async linkUser(userId: string, verified: ManafieldIdentity): Promise<'linked' | 'conflict'> {
@@ -303,7 +340,7 @@ export class ManafieldSsoService {
      return reply.code(400).send('OAuth authorization code missing');
     }
     try {
-     const verified = await this.userInfo(request.query.code, record.verifier);
+     const { identity: verified, accessToken } = await this.userInfo(request.query.code, record.verifier);
      if (record.mode === 'link') {
       if (!record.userId) return reply.code(400).send('Local account missing');
       const linked = await this.linkUser(record.userId, verified);
@@ -311,21 +348,99 @@ export class ManafieldSsoService {
      }
      const account = await this.linkedUser(verified);
      if (!account) {
-      return reply.code(303).header('Location', safeRedirectTarget('login', 'unlinked')).send();
+      // Same handle may already belong to an existing, unlinked local actor.
+      // Do not claim it without independent proof of its native ownership.
+      const occupied = await this.usersRepository.findOneBy({
+       usernameLower: verified.preferredUsername, host: IsNull(),
+      });
+      if (occupied) return reply.code(303).header('Location', safeRedirectTarget('login', 'unlinked')).send();
+      await this.stageProvision(reply, verified, accessToken);
+      return reply.code(303).header('Location', safeRedirectTarget('login', 'signup')).send();
      }
-     const ticket = secret();
-     const browserProof = createBrowserProof();
-     const value: TicketRecord = { userId: account.id, subjectUuid: verified.sub, canonicalHandle: verified.preferredUsername, proofHash: digest(browserProof) };
-     const ok = await this.redis.set('noctemblith:manafield:login-ticket:' + ticket,
-      JSON.stringify(value), 'EX', loginTicketTTL, 'NX');
-     if (ok !== 'OK') throw new Error('One-time login ticket unavailable');
-     setProofCookie(reply, ticketCookieName, browserProof, loginTicketTTL);
+     const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified);
      return reply.code(303).header('Location', '/auth/manafield/finish?ticket=' + encodeURIComponent(ticket)).send();
     } catch {
      return reply.code(303).header('Location', safeRedirectTarget(record.mode, 'failed')).send();
     }
    },
   );
+
+  // The consent and provisioning capability exists only for opted-in instances.
+  fastify.post('/auth/manafield/provision/status', async (request, reply) => {
+   noStore(reply);
+   if (!this.settings) return reply.code(503).send({ error: 'not_configured' });
+   if (!this.originAllowed(request)) return reply.code(403).send({ error: 'forbidden' });
+   const proof = browserCookie(request.headers.cookie, provisionCookieName);
+   if (!proof) return reply.code(401).send({ error: 'provision_session_required' });
+   const raw = await this.redis.get(this.provisionKey(proof));
+   if (!raw) return reply.code(401).send({ error: 'provision_session_expired' });
+   let pending: PendingProvision;
+   try { pending = JSON.parse(raw) as PendingProvision; } catch {
+    return reply.code(403).send({ error: 'provision_session_invalid' });
+   }
+   if (!pending || !matchesManafieldHandle(pending.canonicalHandle, pending.canonicalHandle)) {
+    return reply.code(403).send({ error: 'provision_session_invalid' });
+   }
+   return { handle: pending.canonicalHandle, actor: '@' + pending.canonicalHandle + '@' + new URL(this.config.url).hostname };
+  });
+
+  fastify.post<{ Body: { consent?: unknown } }>('/auth/manafield/provision/confirm', async (request, reply) => {
+   noStore(reply);
+   if (!this.settings) return reply.code(503).send({ error: 'not_configured' });
+   if (!this.originAllowed(request)) return reply.code(403).send({ error: 'forbidden' });
+   if (request.body?.consent !== true) return reply.code(400).send({ error: 'explicit_consent_required' });
+   const proof = browserCookie(request.headers.cookie, provisionCookieName);
+   removeProofCookie(reply, provisionCookieName);
+   if (!proof) return reply.code(401).send({ error: 'provision_session_required' });
+   // Consume consent context atomically, including on failures; reauthentication
+   // is required for every retry and no unverified browser-supplied identity is trusted.
+   const raw = await this.redis.getdel(this.provisionKey(proof));
+   if (!raw) return reply.code(401).send({ error: 'provision_session_expired' });
+   let pending: PendingProvision;
+   try { pending = JSON.parse(raw) as PendingProvision; } catch {
+    return reply.code(403).send({ error: 'provision_session_invalid' });
+   }
+   if (!pending || !validOpaque.test(pending.accessToken) ||
+       !matchesManafieldHandle(pending.canonicalHandle, pending.canonicalHandle)) {
+    return reply.code(403).send({ error: 'provision_session_invalid' });
+   }
+   try {
+    // Account Core is the authority at the moment of account creation.
+    const verified = await this.revalidateIdentity(pending.accessToken);
+    if (verified.sub !== pending.subjectUuid ||
+        !matchesManafieldHandle(verified.preferredUsername, pending.canonicalHandle)) {
+     return reply.code(403).send({ error: 'central_identity_changed' });
+    }
+    const root = await this.db.query('SELECT "rootUserId" FROM "meta" LIMIT 1') as Array<{ rootUserId: string | null }>;
+    if (root.length !== 1 || !root[0].rootUserId) {
+     return reply.code(503).send({ error: 'instance_initial_setup_required' });
+    }
+    if (await this.linkedUser(verified)) return reply.code(409).send({ error: 'already_linked' });
+    if (await this.usersRepository.findOneBy({ usernameLower: verified.preferredUsername, host: IsNull() })) {
+     return reply.code(409).send({ error: 'handle_occupied' });
+    }
+    // Normal SignupService owns keys, password hashing and all Misskey actor
+    // invariants. The UUID link is added INSIDE the same DB transaction to
+    // avoid orphaned public actors if a concurrent signup claims the handle.
+    const { account } = await this.signupService.signup({
+     username: verified.preferredUsername,
+     password: secret(), // Unknown, high-entropy native password; login via Manafield.
+     onCreatedInTransaction: async (manager, user) => {
+      const linked = await manager.query(
+       'INSERT INTO "manafield_identity_link" ("providerId", "subjectUuid", "userId") ' +
+       'VALUES ($1, $2::uuid, $3) ON CONFLICT DO NOTHING RETURNING "userId"',
+       [providerId, verified.sub, user.id],
+      ) as Array<{ userId: string }>;
+      if (linked.length !== 1) throw new Error('Identity link collision; roll back actor');
+     },
+    });
+    const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified);
+    return { ticket };
+   } catch {
+    // Fail closed. OAuth needs restarting after a rejected/expired attempt.
+    return reply.code(409).send({ error: 'provision_failed_reauthenticate' });
+   }
+  });
 
   fastify.post<{ Body: { ticket?: unknown } }>('/auth/manafield/login/finish', async (request, reply) => {
    noStore(reply);

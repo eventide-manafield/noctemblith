@@ -32,7 +32,7 @@ export function isSameOriginMutation(
 
 export function safeRedirectTarget(mode: 'link' | 'login', status: string): string {
  const linkStatus = ['linked', 'conflict', 'denied', 'failed'];
- const loginStatus = ['unlinked', 'denied', 'failed'];
+ const loginStatus = ['unlinked', 'signup', 'denied', 'failed'];
  if (mode === 'link') {
   return '/settings/connect?manafield=' + (linkStatus.includes(status) ? status : 'failed');
  }

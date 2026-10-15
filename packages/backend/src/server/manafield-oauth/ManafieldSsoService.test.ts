@@ -26,6 +26,7 @@ function createMockService() {
 
  const user = { id: 'local-eventide', username: 'eventide', host: null, isSuspended: false, isDeleted: false, token: nativeToken };
  const otherUser = { id: 'local-alice', username: 'alice', host: null, isSuspended: false, isDeleted: false, token: 'a'.repeat(16) };
+ const createdUsers: Array<typeof user> = [];
  const values = new Map<string, string>();
  const rateCounts = new Map<string, number>();
  const links = new Map<string, string>();
@@ -41,6 +42,7 @@ function createMockService() {
    values.set(key, value);
    return 'OK';
   }),
+  get: vi.fn(async (key: string) => values.get(key) ?? null),
   getdel: vi.fn(async (key: string) => {
    const value = values.get(key) ?? null;
    values.delete(key);
@@ -49,6 +51,7 @@ function createMockService() {
  };
  const db = {
   query: vi.fn(async (query: string, args: unknown[]) => {
+   if (query.includes('SELECT "rootUserId" FROM "meta"')) return [{ rootUserId: user.id }];
    if (query.includes('INSERT INTO "manafield_identity_link"')) {
     const subject = args[1] as string, userId = args[2] as string;
     if (links.has(subject) || [...links.values()].includes(userId)) return [];
@@ -69,7 +72,8 @@ function createMockService() {
    throw new Error('Unexpected mock SQL: ' + query);
   }),
  };
- const repository = { findOneBy: vi.fn(async ({ id }: { id: string }) => [user, otherUser].find(u => u.id === id) ?? null) };
+ const repository = { findOneBy: vi.fn(async ({ id, usernameLower }: { id?: string; usernameLower?: string }) =>
+  [user, otherUser, ...createdUsers].find(u => id ? u.id === id : u.username.toLowerCase() === usernameLower) ?? null) };
  const auth = { authenticate: vi.fn(async (token: string) =>
   [user, otherUser].find(u => u.token === token) ? [[user, otherUser].find(u => u.token === token), null] : [null, null]) };
  const role = { isModerator: vi.fn(async () => false) };
@@ -78,12 +82,21 @@ function createMockService() {
   return { finished: true, id: u.id, i: u.token };
  }) };
  const config = { url: ownOrigin + '/' };
+ const signup = {
+  signup: vi.fn(async (args: { username: string; onCreatedInTransaction?: (manager: unknown, user: typeof user) => Promise<void> }) => {
+   if (createdUsers.some(u => u.username === args.username)) throw new Error('duplicate username');
+   const created = { ...user, id: 'jit-' + args.username, username: args.username, token: 'j'.repeat(16) };
+   await args.onCreatedInTransaction?.({ query: db.query }, created);
+   createdUsers.push(created);
+   return { account: created, secret: created.token };
+  }),
+ };
 
  const service = new ManafieldSsoService(config as any, redis as any, db as any,
-  repository as any, auth as any, role as any, signin as any);
+  repository as any, auth as any, role as any, signin as any, signup as any);
  const app = Fastify();
  service.registerRoutes(app);
- return { app, user, otherUser, redis, db, links, role, signin };
+ return { app, user, otherUser, createdUsers, redis, db, links, role, signin, signup };
 }
 
 function stubIssuer(identity = { sub: centralSub, preferred_username: 'eventide' }) {
@@ -112,7 +125,7 @@ describe('Manafield dev SSO existing-account ownership', () => {
  it('is disabled by default, leaving local login intact', async () => {
   vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', '');
   const service = new ManafieldSsoService({ url: ownOrigin } as any, {} as any,
-   {} as any, {} as any, {} as any, {} as any, {} as any);
+   {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   const app = Fastify();
   service.registerRoutes(app);
   try {
@@ -290,6 +303,88 @@ describe('Manafield dev SSO existing-account ownership', () => {
    const replay = await app.inject({ method: 'POST', url: endpoint, payload: { ticket },
     headers: { origin: ownOrigin, cookie: proofCookie } });
    expect(replay.statusCode).toBe(400);
+  } finally { await app.close(); }
+ });
+});
+
+describe('Manafield consent-based just-in-time account provisioning', () => {
+ const newSub = '00000000-0000-4000-8000-000000000055';
+ const newIdentity = { sub: newSub, preferred_username: 'newobserver' };
+
+ async function requestSignup(app: ReturnType<typeof Fastify>, identity = newIdentity) {
+  stubIssuer(identity);
+  const start = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+  expect(start.statusCode).toBe(303);
+  const target = new URL(start.headers.location as string);
+  const stateCookie = cookieFromHeader(start.headers['set-cookie'], '__Host-noctemblith_manafield_state');
+  const callback = await app.inject({
+   method: 'GET',
+   url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + target.searchParams.get('state'),
+   headers: { cookie: stateCookie },
+  });
+  return callback;
+ }
+
+ it('offers consent only to a verified unoccupied handle, then creates a linked actor and one-use login', async () => {
+  const { app, links, createdUsers, signup, signin } = createMockService();
+  try {
+   const callback = await requestSignup(app);
+   expect(callback.statusCode).toBe(303);
+   expect(callback.headers.location).toBe('/auth/manafield/finish?status=signup');
+   expect(createdUsers).toHaveLength(0);
+   const cookie = cookieFromHeader(callback.headers['set-cookie'], '__Host-noctemblith_manafield_provision');
+
+   const endpoint = '/auth/manafield/provision/status';
+   const status = await app.inject({ method: 'POST', url: endpoint, payload: {},
+    headers: { cookie, origin: ownOrigin } });
+   expect(status.json()).toEqual({ handle: 'newobserver', actor: '@newobserver@noctemblith-dev.manafield.studio' });
+   expect((await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: false }, headers: { cookie, origin: ownOrigin } })).statusCode).toBe(400);
+   expect(createdUsers).toHaveLength(0);
+   expect((await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: true }, headers: { cookie, origin: 'https://attacker.test' } })).statusCode).toBe(403);
+
+   const accepted = await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: true }, headers: { cookie, origin: ownOrigin } });
+   expect(accepted.statusCode).toBe(200);
+   const ticket = accepted.json().ticket as string;
+   expect(ticket).toMatch(/^[A-Za-z0-9_-]{43}$/);
+   expect(createdUsers.map(u => u.username)).toEqual(['newobserver']);
+   expect(signup.signup).toHaveBeenCalledOnce();
+   expect(links.get(newSub)).toBe('jit-newobserver');
+   const proof = cookieFromHeader(accepted.headers['set-cookie'], '__Host-noctemblith_manafield_ticket');
+   const finished = await app.inject({ method: 'POST', url: '/auth/manafield/login/finish',
+    payload: { ticket }, headers: { cookie: proof, origin: ownOrigin } });
+   expect(finished.statusCode).toBe(200);
+   expect(finished.json()).toMatchObject({ finished: true, id: 'jit-newobserver' });
+   expect(signin.signin).toHaveBeenCalledOnce();
+   expect((await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: true }, headers: { cookie, origin: ownOrigin } })).statusCode).toBe(401);
+  } finally { await app.close(); }
+ });
+
+ it('does not claim an existing native actor by matching its public username', async () => {
+  const { app, signup } = createMockService();
+  try {
+   const callback = await requestSignup(app, { sub: newSub, preferred_username: 'eventide' });
+   expect(callback.statusCode).toBe(303);
+   expect(callback.headers.location).toBe('/auth/manafield/finish?status=unlinked');
+   expect(signup.signup).not.toHaveBeenCalled();
+  } finally { await app.close(); }
+ });
+
+ it('revalidates active central UUID and handle after consent before provisioning', async () => {
+  const { app, signup, links } = createMockService();
+  try {
+   const callback = await requestSignup(app);
+   const cookie = cookieFromHeader(callback.headers['set-cookie'], '__Host-noctemblith_manafield_provision');
+   stubIssuer({ sub: '00000000-0000-4000-8000-000000000066', preferred_username: 'newobserver' });
+   const result = await app.inject({ method: 'POST', url: '/auth/manafield/provision/confirm',
+    payload: { consent: true }, headers: { cookie, origin: ownOrigin } });
+   expect(result.statusCode).toBe(403);
+   expect(result.json()).toMatchObject({ error: 'central_identity_changed' });
+   expect(signup.signup).not.toHaveBeenCalled();
+   expect(links.size).toBe(0);
   } finally { await app.close(); }
  });
 });

@@ -81,6 +81,11 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private roleService: RoleService,
 	) {
 		super(meta, paramDef, async (ps, _me, token) => {
+			// In integrated mode, even the administrator create-user endpoint must not
+			// bypass the verified central account and immutable matching handle.
+			if (process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true') {
+				throw new ApiError(meta.errors.accessDenied);
+			}
 			const me = _me ? await this.usersRepository.findOneByOrFail({ id: _me.id }) : null;
 
 			if (this.serverSettings.rootUserId == null && me == null && token == null) {

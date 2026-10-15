@@ -75,6 +75,11 @@ export class SignupApiService {
 		}>,
 		reply: FastifyReply,
 	) {
+		// Manafield-integrated installations must not expose the native signup API.
+		// This server-side guard is independent of registration UI or invitations.
+		if (process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true') {
+			return reply.code(403).send({ error: 'manafield_account_required' });
+		}
 		const body = request.body;
 
 		// Verify *Captcha
@@ -336,6 +341,9 @@ export class SignupApiService {
 
 	@bindThis
 	public async signupPending(request: FastifyRequest<{ Body: { code: string; } }>, reply: FastifyReply) {
+		if (process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true') {
+			return reply.code(403).send({ error: 'manafield_account_required' });
+		}
 		const body = request.body;
 
 		const code = body['code'];

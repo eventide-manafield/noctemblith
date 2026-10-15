@@ -7,6 +7,7 @@ import { generateKeyPair } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { DataSource, IsNull } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { MiMeta, UsedUsernamesRepository, UsersRepository } from '@/models/_.js';
 import { MiUser } from '@/models/User.js';
@@ -55,6 +56,8 @@ export class SignupService {
 		passwordHash?: MiUserProfile['password'] | null;
 		host?: string | null;
 		ignorePreservedUsernames?: boolean;
+		/** Execute a trusted owner-link operation inside the new-user transaction. */
+		onCreatedInTransaction?: (manager: EntityManager, user: MiUser) => Promise<void>;
 	}) {
 		const { username, password, passwordHash, host } = opts;
 		let hash = passwordHash;
@@ -152,6 +155,9 @@ export class SignupService {
 				createdAt: new Date(),
 				username: username.toLowerCase(),
 			}));
+
+			// A mandatory external identity link is committed or rolled back with the actor.
+			await opts.onCreatedInTransaction?.(transactionalEntityManager, account);
 		});
 
 		this.usersChart.update(account, true);
