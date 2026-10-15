@@ -4,6 +4,9 @@ on:
     paths:
       - "packages/backend/src/server/manafield-oauth/**"
       - "test/unit/noctemblith-manafield-oauth-node.test.mjs"
+      - "packages/frontend/src/pages/manafield-login-finish.vue"
+      - "packages/frontend/src/pages/settings/connect.vue"
+      - "packages/frontend/src/components/MkSignin.input.vue"
       - ".github/workflows/noctemblith-manafield-oauth.yml"
 permissions:
   contents: read

@@ -12,10 +12,10 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 		<SearchMarker :keywords="['manafield', 'sso', 'oauth', 'account']">
 			<FormSection v-if="manafieldEnabled">
-				<template #label><i class="ti ti-link"></i> Manafield Account</template>
+				<template #label><i class="ti ti-link"></i> 마나필드 계정</template>
 				<div class="_gaps_s">
-					<p v-if="manafieldLinked">이 Noctemblith 계정은 마나필드 계정에 연결되어 있어.</p>
-					<p v-else>기존 Noctemblith 계정의 소유권과 마나필드 로그인을 모두 확인한 뒤 연결해.</p>
+					<p v-if="manafieldLinked">이 Noctemblith 계정은 마나필드 계정과 연결되어 있습니다.</p>
+					<p v-else>계정을 연결하려면 현재 Noctemblith 계정과 마나필드 계정의 소유권을 모두 확인해야 합니다.</p>
 					<p v-if="manafieldMessage" role="status">{{ manafieldMessage }}</p>
 					<MkButton v-if="!manafieldLinked" primary :disabled="manafieldBusy" @click="startManafieldLink">
 						{{ manafieldBusy ? '연결 준비 중…' : '마나필드 계정 연결하기' }}
@@ -116,10 +116,10 @@ async function getManafieldState() {
   }
   const feedback = new URL(window.location.href).searchParams.get('manafield');
   const messages: Record<string, string> = {
-   linked: '마나필드 계정 연결이 확인됐어.',
-   conflict: '이미 다른 계정에 연결되어 있어서 연결할 수 없어.',
-   denied: '마나필드 인증이 취소됐어.',
-   failed: '연결 과정에서 오류가 발생했어. 잠시 후 다시 시도해 줘.',
+   linked: '마나필드 계정 연결이 완료되었습니다.',
+   conflict: '계정 정보가 일치하지 않거나 이미 연결된 계정이 있어 연결할 수 없습니다.',
+   denied: '마나필드 인증이 취소되었습니다.',
+   failed: '연결 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
   };
   if (feedback && messages[feedback]) manafieldMessage.value = messages[feedback];
  } catch {
@@ -143,7 +143,7 @@ async function startManafieldLink() {
   if (!data.authorizationUrl) throw new Error('missing_url');
   window.location.assign(data.authorizationUrl);
  } catch {
-  manafieldMessage.value = '마나필드 연결을 시작하지 못했어. 잠시 후 다시 시도해 줘.';
+  manafieldMessage.value = '마나필드 계정 연결을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.';
   manafieldBusy.value = false;
  }
 }

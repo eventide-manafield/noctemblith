@@ -43,7 +43,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		<div v-if="manafieldAvailable" class="_gaps_s">
 			<div :class="$style.orHr"><p :class="$style.orMsg">{{ i18n.ts.or }}</p></div>
 			<MkButton type="button" rounded large primary style="margin: 0 auto;" @click="goToManafieldLogin">
-				Manafield 계정으로 계속하기
+				마나필드 계정으로 계속하기
 			</MkButton>
 		</div>
 
