@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Manafield Account OAuth consumer. Disabled unless explicitly configured.
- * Never binds users by handle and never places native Noctemblith tokens in URLs.
+ * Binds by verified UUID AND matching immutable handle; never places native tokens in URLs.
  */
 
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -22,6 +22,8 @@ import {
  createManafieldTokenRequest,
  parseManafieldIdentity,
  readManafieldOAuthSettings,
+ matchesManafieldHandle,
+ type ManafieldIdentity,
  type ManafieldOAuthSettings,
 } from './client.js';
 import {
@@ -40,7 +42,7 @@ const validOpaque = /^[A-Za-z0-9_-]{43}$/;
 
 type OAuthMode = 'link' | 'login';
 type FlowRecord = { mode: OAuthMode; verifier: string; proofHash: string; userId?: string };
-type TicketRecord = { userId: string; proofHash: string };
+type TicketRecord = { userId: string; subjectUuid: string; canonicalHandle: string; proofHash: string };
 
 const secret = () => randomBytes(32).toString('base64url');
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -199,9 +201,11 @@ export class ManafieldSsoService {
   return parseManafieldIdentity(await boundedJson(res));
  }
 
- private async linkUser(userId: string, subjectUuid: string): Promise<'linked' | 'conflict'> {
+ private async linkUser(userId: string, verified: ManafieldIdentity): Promise<'linked' | 'conflict'> {
   const current = await this.liveLocalUser(userId);
-  if (!current) return 'conflict';
+  // Never claim an existing native actor merely because the UUID is verified.
+  if (!current || !matchesManafieldHandle(verified.preferredUsername, current.username)) return 'conflict';
+  const subjectUuid = verified.sub;
 
   // Insert is atomic. Both UNIQUE constraints prevent concurrent claiming
   // of either a subject or a local user. Existing identical links are safe.
@@ -220,12 +224,18 @@ export class ManafieldSsoService {
    currentLink[0].sub === subjectUuid && currentLink[0].userId === userId ? 'linked' : 'conflict';
  }
 
- private async linkedUser(subjectUuid: string) {
+ private async linkedUser(verified: ManafieldIdentity) {
   const links = await this.db.query(
    'SELECT "userId" FROM "manafield_identity_link" WHERE "providerId" = $1 AND "subjectUuid" = $2::uuid',
-   [providerId, subjectUuid],
+   [providerId, verified.sub],
   ) as Array<{ userId: string }>;
-  return links.length === 1 ? this.liveLocalUser(links[0].userId) : null;
+  if (links.length === 0) return null;
+  if (links.length !== 1) throw new Error('Ambiguous Manafield identity mapping');
+  const user = await this.liveLocalUser(links[0].userId);
+  if (!user || !matchesManafieldHandle(verified.preferredUsername, user.username)) {
+   throw new Error('Linked Noctemblith handle conflicts with Manafield identity');
+  }
+  return user;
  }
 
  public registerRoutes(fastify: FastifyInstance): void {
@@ -296,16 +306,16 @@ export class ManafieldSsoService {
      const verified = await this.userInfo(request.query.code, record.verifier);
      if (record.mode === 'link') {
       if (!record.userId) return reply.code(400).send('Local account missing');
-      const linked = await this.linkUser(record.userId, verified.sub);
+      const linked = await this.linkUser(record.userId, verified);
       return reply.code(303).header('Location', safeRedirectTarget('link', linked)).send();
      }
-     const account = await this.linkedUser(verified.sub);
+     const account = await this.linkedUser(verified);
      if (!account) {
       return reply.code(303).header('Location', safeRedirectTarget('login', 'unlinked')).send();
      }
      const ticket = secret();
      const browserProof = createBrowserProof();
-     const value: TicketRecord = { userId: account.id, proofHash: digest(browserProof) };
+     const value: TicketRecord = { userId: account.id, subjectUuid: verified.sub, canonicalHandle: verified.preferredUsername, proofHash: digest(browserProof) };
      const ok = await this.redis.set('noctemblith:manafield:login-ticket:' + ticket,
       JSON.stringify(value), 'EX', loginTicketTTL, 'NX');
      if (ok !== 'OK') throw new Error('One-time login ticket unavailable');
@@ -333,11 +343,26 @@ export class ManafieldSsoService {
    try { record = JSON.parse(data) as TicketRecord; } catch {
     return reply.code(400).send({ error: 'invalid_ticket' });
    }
-   if (!eq(record.proofHash, digest(proof))) {
+   if (!record || typeof record !== 'object') return reply.code(400).send({ error: 'invalid_ticket' });
+   if (typeof record.proofHash !== 'string' || !eq(record.proofHash, digest(proof))) {
     return reply.code(403).send({ error: 'browser_mismatch' });
    }
-   const local = await this.liveLocalUser(record.userId);
-   if (!local) return reply.code(403).send({ error: 'account_unavailable' });
+   // Recheck the link and canonical handle at the moment the local session is issued.
+   // A changed username or an unlinked/reassigned actor must never use a prior ticket.
+   let local: Awaited<ReturnType<ManafieldSsoService['linkedUser']>>;
+   try {
+    if (typeof record.subjectUuid !== 'string' || typeof record.canonicalHandle !== 'string') {
+     return reply.code(403).send({ error: 'identity_conflict' });
+    }
+    local = await this.linkedUser({
+     sub: record.subjectUuid, preferredUsername: record.canonicalHandle,
+    });
+   } catch {
+    return reply.code(403).send({ error: 'identity_conflict' });
+   }
+   if (!local || local.id !== record.userId) {
+    return reply.code(403).send({ error: 'identity_conflict' });
+   }
    // The central account currently has no independent MFA step-up policy.
    // Never silently bypass local MFA for Noctemblith admin/moderator accounts.
    if (await this.roleService.isModerator(local)) {
