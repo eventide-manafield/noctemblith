@@ -24,6 +24,16 @@ const oauthCodePattern = /^[a-zA-Z0-9_-]{22,128}$/;
 const oauthStatePattern = /^[a-zA-Z0-9_-]{43}$/;
 const pkceVerifierPattern = /^[a-zA-Z0-9_-]{43,128}$/;
 const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+// Account Core owns this immutable canonical lowercase handle policy.
+const centralHandlePattern = /^[a-z0-9_]{1,20}$/;
+const localHandlePattern = /^[a-z0-9_]{1,20}$/i;
+
+/** UUID ownership is necessary but NOT sufficient: block AB-BA account swapping. */
+export function matchesManafieldHandle(centralHandle: string, localUsername: string): boolean {
+	return centralHandlePattern.test(centralHandle) &&
+		localHandlePattern.test(localUsername) &&
+		localUsername.toLowerCase() === centralHandle;
+}
 
 function strictHttpsUrl(value: string): URL {
 	const url = new URL(value);
@@ -117,8 +127,7 @@ export function parseManafieldIdentity(value: unknown): ManafieldIdentity {
 	}
 	const raw = value as Record<string, unknown>;
 	if (typeof raw.sub !== 'string' || !uuidPattern.test(raw.sub) ||
-		typeof raw.preferred_username !== 'string' || raw.preferred_username.length > 100 ||
-		raw.preferred_username.trim().length === 0) {
+		typeof raw.preferred_username !== 'string' || !centralHandlePattern.test(raw.preferred_username)) {
 		throw new Error('Invalid Manafield identity claims');
 	}
 	return { sub: raw.sub.toLowerCase(), preferredUsername: raw.preferred_username };

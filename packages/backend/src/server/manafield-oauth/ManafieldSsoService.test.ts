@@ -24,7 +24,8 @@ function createMockService() {
  vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID', 'manafield-noctemblith-dev');
  vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL', ownOrigin + '/auth/manafield/callback');
 
- const user = { id: 'local-eventide', host: null, isSuspended: false, isDeleted: false, token: nativeToken };
+ const user = { id: 'local-eventide', username: 'eventide', host: null, isSuspended: false, isDeleted: false, token: nativeToken };
+ const otherUser = { id: 'local-alice', username: 'alice', host: null, isSuspended: false, isDeleted: false, token: 'a'.repeat(16) };
  const values = new Map<string, string>();
  const rateCounts = new Map<string, number>();
  const links = new Map<string, string>();
@@ -68,8 +69,9 @@ function createMockService() {
    throw new Error('Unexpected mock SQL: ' + query);
   }),
  };
- const repository = { findOneBy: vi.fn(async ({ id }: { id: string }) => id === user.id ? user : null) };
- const auth = { authenticate: vi.fn(async (token: string) => token === nativeToken ? [user, null] : [null, null]) };
+ const repository = { findOneBy: vi.fn(async ({ id }: { id: string }) => [user, otherUser].find(u => u.id === id) ?? null) };
+ const auth = { authenticate: vi.fn(async (token: string) =>
+  [user, otherUser].find(u => u.token === token) ? [[user, otherUser].find(u => u.token === token), null] : [null, null]) };
  const role = { isModerator: vi.fn(async () => false) };
  const signin = { signin: vi.fn((_request: unknown, reply: { code(n: number): unknown }, u: typeof user) => {
   reply.code(200);
@@ -81,10 +83,10 @@ function createMockService() {
   repository as any, auth as any, role as any, signin as any);
  const app = Fastify();
  service.registerRoutes(app);
- return { app, user, redis, db, links, role, signin };
+ return { app, user, otherUser, redis, db, links, role, signin };
 }
 
-function stubIssuer() {
+function stubIssuer(identity = { sub: centralSub, preferred_username: 'eventide' }) {
  const mock = vi.fn(async (value: string | URL) => {
   const pathname = new URL(String(value)).pathname;
   if (pathname === '/account/oauth/token') {
@@ -92,7 +94,7 @@ function stubIssuer() {
     { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (pathname === '/account/oauth/userinfo') {
-   return new Response(JSON.stringify({ sub: centralSub, preferred_username: 'eventide' }),
+   return new Response(JSON.stringify(identity),
     { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   throw new Error('Unexpected external OAuth target');
@@ -173,6 +175,46 @@ describe('Manafield dev SSO existing-account ownership', () => {
   } finally { await app.close(); }
  });
 
+ it('rejects cross-handle AB-BA ownership swaps before persisting a link', async () => {
+  const { app, links } = createMockService();
+  try {
+   for (const { native, sub, handle } of [
+    { native: nativeToken, sub: centralSub, handle: 'alice' },
+    { native: 'a'.repeat(16), sub: '00000000-0000-4000-8000-000000000002', handle: 'eventide' },
+   ]) {
+    stubIssuer({ sub, preferred_username: handle });
+    const start = await app.inject({ method: 'POST', url: '/auth/manafield/link/start',
+     payload: {}, headers: { origin: ownOrigin, authorization: 'Bearer ' + native } });
+    expect(start.statusCode).toBe(200);
+    const auth = new URL(start.json().authorizationUrl);
+    const cookie = cookieFromHeader(start.headers['set-cookie'], '__Host-noctemblith_manafield_state');
+    const callback = await app.inject({ method: 'GET',
+     url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + auth.searchParams.get('state'),
+     headers: { cookie } });
+    expect(callback.statusCode).toBe(303);
+    expect(callback.headers.location).toBe('/settings/connect?manafield=conflict');
+    expect(links.size).toBe(0);
+   }
+  } finally { await app.close(); }
+ });
+
+ it('rejects a preexisting UUID link when the local handle belongs to another account', async () => {
+  const { app, links, signin } = createMockService();
+  links.set(centralSub, 'local-alice');
+  stubIssuer();
+  try {
+   const start = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+   const auth = new URL(start.headers.location as string);
+   const cookie = cookieFromHeader(start.headers['set-cookie'], '__Host-noctemblith_manafield_state');
+   const callback = await app.inject({ method: 'GET',
+    url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + auth.searchParams.get('state'),
+    headers: { cookie } });
+   expect(callback.statusCode).toBe(303);
+   expect(callback.headers.location).toBe('/auth/manafield/finish?status=failed');
+   expect(signin.signin).not.toHaveBeenCalled();
+  } finally { await app.close(); }
+ });
+
  it('never issues a privileged native login token from central-only auth', async () => {
   const { app, links, role, signin } = createMockService();
   links.set(centralSub, 'local-eventide');
@@ -193,6 +235,29 @@ describe('Manafield dev SSO existing-account ownership', () => {
     payload: { ticket }, headers: { origin: ownOrigin, cookie: proof } });
    expect(finish.statusCode).toBe(403);
    expect(finish.json()).toMatchObject({ error: 'privileged_account_requires_local_login' });
+   expect(signin.signin).not.toHaveBeenCalled();
+  } finally { await app.close(); }
+ });
+
+ it('rechecks handle and UUID link again when finishing an issued ticket', async () => {
+  const { app, user, links, signin } = createMockService();
+  links.set(centralSub, 'local-eventide');
+  stubIssuer();
+  try {
+   const start = await app.inject({ method: 'GET', url: '/auth/manafield/login/start' });
+   const auth = new URL(start.headers.location as string);
+   const stateCookie = cookieFromHeader(start.headers['set-cookie'], '__Host-noctemblith_manafield_state');
+   const callback = await app.inject({ method: 'GET',
+    url: '/auth/manafield/callback?code=' + oauthCode + '&state=' + auth.searchParams.get('state'),
+    headers: { cookie: stateCookie } });
+   expect(callback.statusCode).toBe(303);
+   const ticket = new URL(callback.headers.location as string, ownOrigin).searchParams.get('ticket');
+   const cookie = cookieFromHeader(callback.headers['set-cookie'], '__Host-noctemblith_manafield_ticket');
+   user.username = 'changed';
+   const finished = await app.inject({ method: 'POST', url: '/auth/manafield/login/finish',
+    payload: { ticket }, headers: { origin: ownOrigin, cookie } });
+   expect(finished.statusCode).toBe(403);
+   expect(finished.json()).toMatchObject({ error: 'identity_conflict' });
    expect(signin.signin).not.toHaveBeenCalled();
   } finally { await app.close(); }
  });

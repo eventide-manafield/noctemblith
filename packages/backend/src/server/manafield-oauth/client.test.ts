@@ -9,6 +9,7 @@ import {
 	createManafieldAuthorization,
 	createManafieldTokenRequest,
 	matchesManafieldOAuthState,
+	matchesManafieldHandle,
 	parseManafieldIdentity,
 	readManafieldOAuthSettings,
 } from './client.js';
@@ -96,11 +97,26 @@ describe('Manafield Account OAuth2 client foundation', () => {
 		for (const input of [
 			{}, { sub: 'eventide', preferred_username: 'eventide' },
 			{ sub, preferred_username: '' },
+			{ sub, preferred_username: 'Eventide' },
+			{ sub, preferred_username: 'with-dash' },
+			{ sub, preferred_username: 'a'.repeat(21) },
 			{ sub, preferred_username: 123 },
 			{ sub, email: 'unverified@example.org' },
 			null,
 		]) {
 			expect(() => parseManafieldIdentity(input)).toThrow();
+		}
+	});
+
+	it('requires matching canonical handles in addition to UUID ownership', () => {
+		expect(matchesManafieldHandle('eventide', 'eventide')).toBe(true);
+		expect(matchesManafieldHandle('eventide', 'Eventide')).toBe(true);
+		for (const [central, local] of [
+			['alice', 'bob'], ['bob', 'alice'], ['eventide', 'alice'],
+			['alice', 'eventide'], ['Eventide', 'eventide'],
+			['alice', 'alice '], ['alice', 'alicé'], ['', ''],
+		]) {
+			expect(matchesManafieldHandle(central, local)).toBe(false);
 		}
 	});
 });
