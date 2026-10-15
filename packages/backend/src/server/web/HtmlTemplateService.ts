@@ -157,7 +157,7 @@ export class HtmlTemplateService {
 			version: this.config.version,
 			config: this.config,
 			langs: [...languages],
-			instanceName: this.meta.name ?? 'Noctemblith',
+			instanceName: this.meta.name || 'Noctemblith',
 			icon: this.meta.iconUrl || '/static-assets/noctemblith.svg',
 			appleTouchIcon: this.meta.app512IconUrl || '/static-assets/noctemblith-emoji.png',
 			themeColor: this.meta.themeColor,

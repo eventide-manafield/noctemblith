@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-export function FlushPage(props?: {}) {
+export function FlushPage() {
 	return (
 		<>
 			{'<!DOCTYPE html>'}
 			<html>
 				<head>
 					<meta charset="UTF-8" />
-					<meta name="application-name" content="Misskey" />
+					<meta name="application-name" content="Noctemblith" />
 					<title>Clear preferences and cache</title>
 				</head>
 				<body>

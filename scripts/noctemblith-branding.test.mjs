@@ -44,6 +44,20 @@ test('server and frontend fallbacks respect instance overrides', () => {
 	assert.match(server, /meta\.app512IconUrl \? '512x512' : 'any'/);
 	assert.match(server, /sendFile\('\/noctemblith-emoji\.png', this\.staticAssets\)/);
 	assert.match(html, /this\.meta\.iconUrl \|\| '\/static-assets\/noctemblith\.svg'/);
+	// Initial HTML, PWA installation, and embedded pages must not depend on post-load renaming.
+	assert.match(server, /'name': this\.meta\.name \|\| 'Noctemblith'/);
+	assert.match(html, /instanceName: this\.meta\.name \|\| 'Noctemblith'/);
+	assert.match(server, /title: this\.meta\.name \|\| 'Noctemblith'/);
+	assert.match(server, /'short_name': this\.meta\.shortName \|\| this\.meta\.name \|\| 'Noctemblith'/);
+	assert.doesNotMatch(server, /this\.meta\.name \?\? 'Misskey'/);
+	for (const view of ['base.tsx', 'base-embed.tsx']) {
+		const source = txt('packages/backend/src/server/web/views/' + view);
+		assert.match(source, /const instanceName = props\.instanceName \|\| 'Noctemblith'/);
+		assert.match(source, /<title safe>\{pageTitle\}<\/title>/);
+	}
+
+	assert.match(txt('packages/backend/src/server/web/views/reversi-game.tsx'), /Noctemblith Reversi/);
+	assert.match(txt('packages/backend/assets/misc/flush.js'), /Back to Noctemblith/);
 	assert.match(html, /this\.meta\.app512IconUrl \|\| '\/static-assets\/noctemblith-emoji\.png'/);
 
 	for (const path of [
