@@ -29,6 +29,8 @@ describe('Noctemblith Manafield browser correlation', () => {
   expect(safeRedirectTarget('link', 'linked')).toBe('/settings/connect?manafield=linked');
   expect(safeRedirectTarget('login', 'unlinked')).toBe('/auth/manafield/finish?status=unlinked');
   expect(safeRedirectTarget('login', 'signup')).toBe('/auth/manafield/finish?status=signup');
+  expect(safeRedirectTarget('login', 'handle-required')).toBe('/auth/manafield/finish?status=handle-required');
+  expect(safeRedirectTarget('link', 'handle-required')).toBe('/settings/connect?manafield=handle-required');
   expect(safeRedirectTarget('link', 'https://evil.example')).toBe('/settings/connect?manafield=failed');
   expect(safeRedirectTarget('login', '//evil.example')).toBe('/auth/manafield/finish?status=failed');
  });
