@@ -39,6 +39,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<MkButton type="submit" large primary rounded style="margin: 0 auto;" data-testid="signin-page-input-continue">{{ i18n.ts.continue }} <i class="ti ti-arrow-right"></i></MkButton>
 		</form>
 
+		<!-- Manafield Account SSO is only advertised when this instance opts in. -->
+		<div v-if="manafieldAvailable" class="_gaps_s">
+			<div :class="$style.orHr"><p :class="$style.orMsg">{{ i18n.ts.or }}</p></div>
+			<MkButton type="button" rounded large primary style="margin: 0 auto;" @click="goToManafieldLogin">
+				Manafield 계정으로 계속하기
+			</MkButton>
+		</div>
+
 		<!-- パスワードレスログイン -->
 		<div :class="$style.orHr">
 			<p :class="$style.orMsg">{{ i18n.ts.or }}</p>
@@ -53,7 +61,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { toUnicode } from 'punycode.js';
 
 import { query, extractDomain } from '@@/js/url.js';
@@ -84,6 +92,21 @@ const emit = defineEmits<{
 const host = toUnicode(configHost);
 
 const username = ref(props.initialUsername ?? '');
+const manafieldAvailable = ref(false);
+onMounted(async () => {
+	try {
+		const response = await window.fetch('/auth/manafield/status', { cache: 'no-store' });
+		if (!response.ok) return;
+		const data = await response.json() as { enabled?: boolean };
+		manafieldAvailable.value = data.enabled === true;
+	} catch {
+		// Non-Manafield instances must retain normal local login.
+	}
+});
+
+function goToManafieldLogin(): void {
+	window.location.assign('/auth/manafield/login/start');
+}
 
 //#region Open on remote
 function openRemote(options: OpenOnRemoteOptions, targetHost?: string): void {

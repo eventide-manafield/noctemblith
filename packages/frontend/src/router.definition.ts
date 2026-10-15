@@ -26,6 +26,9 @@ export const ROUTE_DEF = [{
 	path: '/',
 	component: $i ? PageTimeline : page(() => import('@/pages/welcome.vue')),
 }, {
+	path: '/auth/manafield/finish',
+	component: page(() => import('@/pages/manafield-login-finish.vue')),
+}, {
 	path: '/timeline',
 	component: PageTimeline,
 }, {

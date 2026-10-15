@@ -10,6 +10,20 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<SearchText>{{ i18n.ts._settings.serviceConnectionBanner }}</SearchText>
 		</MkFeatureBanner>
 
+		<SearchMarker :keywords="['manafield', 'sso', 'oauth', 'account']">
+			<FormSection v-if="manafieldEnabled">
+				<template #label><i class="ti ti-link"></i> Manafield Account</template>
+				<div class="_gaps_s">
+					<p v-if="manafieldLinked">이 Noctemblith 계정은 마나필드 계정에 연결되어 있어.</p>
+					<p v-else>기존 Noctemblith 계정의 소유권과 마나필드 로그인을 모두 확인한 뒤 연결해.</p>
+					<p v-if="manafieldMessage" role="status">{{ manafieldMessage }}</p>
+					<MkButton v-if="!manafieldLinked" primary :disabled="manafieldBusy" @click="startManafieldLink">
+						{{ manafieldBusy ? '연결 준비 중…' : '마나필드 계정 연결하기' }}
+					</MkButton>
+				</div>
+			</FormSection>
+		</SearchMarker>
+
 		<SearchMarker :keywords="['api', 'app', 'token', 'accessToken']">
 			<FormSection>
 				<template #label><i class="ti ti-api"></i> <SearchLabel>{{ i18n.ts._settings.api }}</SearchLabel></template>
@@ -61,7 +75,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, defineAsyncComponent, markRaw } from 'vue';
+import { computed, ref, defineAsyncComponent, markRaw, onMounted } from 'vue';
 import MkPagination from '@/components/MkPagination.vue';
 import FormSection from '@/components/form/section.vue';
 import FormLink from '@/components/form/link.vue';
@@ -73,8 +87,68 @@ import { misskeyApi } from '@/utility/misskey-api.js';
 import MkButton from '@/components/MkButton.vue';
 import MkFolder from '@/components/MkFolder.vue';
 import { Paginator } from '@/utility/paginator.js';
+import { $i } from '@/i.js';
 
 const isDesktop = ref(window.innerWidth >= 1100);
+const manafieldEnabled = ref(false);
+const manafieldLinked = ref(false);
+const manafieldBusy = ref(false);
+const manafieldMessage = ref('');
+
+async function getManafieldState() {
+ try {
+  const status = await window.fetch('/auth/manafield/status', { cache: 'no-store' });
+  if (!status.ok) return;
+  const availability = await status.json() as { enabled?: boolean };
+  if (!availability.enabled || !$i) return;
+  manafieldEnabled.value = true;
+
+  const linked = await window.fetch('/auth/manafield/link/status', {
+   method: 'POST',
+   headers: { Authorization: 'Bearer ' + $i.token, 'Content-Type': 'application/json' },
+   credentials: 'same-origin',
+   cache: 'no-store',
+   body: '{}',
+  });
+  if (linked.ok) {
+   const result = await linked.json() as { linked?: boolean };
+   manafieldLinked.value = result.linked === true;
+  }
+  const feedback = new URL(window.location.href).searchParams.get('manafield');
+  const messages: Record<string, string> = {
+   linked: '마나필드 계정 연결이 확인됐어.',
+   conflict: '이미 다른 계정에 연결되어 있어서 연결할 수 없어.',
+   denied: '마나필드 인증이 취소됐어.',
+   failed: '연결 과정에서 오류가 발생했어. 잠시 후 다시 시도해 줘.',
+  };
+  if (feedback && messages[feedback]) manafieldMessage.value = messages[feedback];
+ } catch {
+  // The integration is optional; other settings must remain functional.
+ }
+}
+
+async function startManafieldLink() {
+ if (!$i || manafieldBusy.value) return;
+ manafieldBusy.value = true;
+ try {
+  const response = await window.fetch('/auth/manafield/link/start', {
+   method: 'POST',
+   credentials: 'same-origin',
+   cache: 'no-store',
+   headers: { Authorization: 'Bearer ' + $i.token, 'Content-Type': 'application/json' },
+   body: '{}',
+  });
+  if (!response.ok) throw new Error('link_start_failed');
+  const data = await response.json() as { authorizationUrl?: string };
+  if (!data.authorizationUrl) throw new Error('missing_url');
+  window.location.assign(data.authorizationUrl);
+ } catch {
+  manafieldMessage.value = '마나필드 연결을 시작하지 못했어. 잠시 후 다시 시도해 줘.';
+  manafieldBusy.value = false;
+ }
+}
+
+onMounted(() => { void getManafieldState(); });
 
 const paginator = markRaw(new Paginator('i/webhooks/list', {
 	limit: 100,
