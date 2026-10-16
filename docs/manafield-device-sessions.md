@@ -22,7 +22,7 @@ native-token flows. No database, Redis, or ActivityPub origin migrations are nee
 `POST /auth/manafield/session/logout` with same-origin Origin and
 `Authorization: Bearer mfs1_...`. Returns HTTP 204 when that token is revoked,
 401 when invalid/previously revoked, or 503 when integration is disabled.
-The frontend calls it before deleting local storage. The user's Manafield Account
+The frontend revokes the current token and other saved browser-session tokens for the **same origin** before deleting local storage; it never submits tokens from other instances. The user's Manafield Account
 Core session is **not** revoked. A 401 still permits the browser to clear its own
 already-invalid token; unexpected failures leave local state intact for retry.
 
