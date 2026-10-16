@@ -12,6 +12,7 @@ import type * as SentryVue from '@sentry/vue';
 import type { RedisOptions as IoRedisRedisOptions } from 'ioredis';
 import type { RedisOptions as BullMqRedisOptions } from 'bullmq';
 import type { AccessLogConfiguration, LogFormat, LogLevelSetting } from './logging/types.js';
+import { readManafieldDatabaseBinding } from './misc/manafield-database-binding.js';
 
 type RedisOptionsRequiredFields = {
 	host: string;
@@ -145,6 +146,7 @@ export type Config = {
 		db: string;
 		user: string;
 		pass: string;
+		schema?: string;
 		disableCache?: boolean;
 		extra?: { [x: string]: string };
 	};
@@ -278,6 +280,10 @@ export function loadConfig(): Config {
 	const scheme = url.protocol.replace(/:$/, '');
 	const wsScheme = scheme.replace('http', 'ws');
 
+	const managedDatabaseBinding = readManafieldDatabaseBinding();
+	if (managedDatabaseBinding && config.dbReplications) {
+		throw new Error('Manafield managed PostgreSQL binding does not support independently configured database replicas');
+	}
 	const dbDb = config.db.db ?? process.env.DATABASE_DB ?? '';
 	const dbUser = config.db.user ?? process.env.DATABASE_USER ?? '';
 	const dbPass = config.db.pass ?? process.env.DATABASE_PASSWORD ?? '';
@@ -314,7 +320,15 @@ export function loadConfig(): Config {
 		apiUrl: `${scheme}://${host}/api`,
 		authUrl: `${scheme}://${host}/auth`,
 		driveUrl: `${scheme}://${host}/files`,
-		db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass },
+		db: managedDatabaseBinding ? {
+			host: managedDatabaseBinding.host,
+			port: managedDatabaseBinding.port,
+			db: managedDatabaseBinding.db,
+			user: managedDatabaseBinding.user,
+			pass: managedDatabaseBinding.pass,
+			schema: managedDatabaseBinding.schema,
+			disableCache: config.db.disableCache,
+		} : { ...config.db, db: dbDb, user: dbUser, pass: dbPass },
 		dbReplications: config.dbReplications,
 		dbSlaves: config.dbSlaves,
 		fulltextSearch: config.fulltextSearch,
