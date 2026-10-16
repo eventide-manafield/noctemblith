@@ -29,6 +29,7 @@ function sessionKey(token: string): string {
 interface BrowserSession {
  userId: string;
  createdAt: string;
+ centralGuard?: string;
 }
 
 @Injectable()
@@ -42,9 +43,30 @@ export class ManafieldSessionService {
   this.enabled = process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true';
  }
 
- async issue(userId: string): Promise<string> {
+ private async centralGuardActive(guard: string): Promise<boolean> {
+  if (!this.enabled || !/^[A-Za-z0-9_-]{43}$/.test(guard)) return false;
+  const origin = process.env.NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN;
+  if (!origin || new URL(origin).protocol !== 'https:') throw new Error('Core guard endpoint is not configured');
+  const response = await fetch(new URL('/account/oauth/session-guard/status', origin), {
+   method: 'POST',
+   headers: { 'Authorization': 'Bearer ' + guard, 'Accept': 'application/json' },
+   redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok || !response.headers.get('content-type')?.startsWith('application/json')) {
+   throw new Error('Core guard validation unavailable');
+  }
+  const result = await response.json() as { active?: unknown };
+  if (typeof result.active !== 'boolean') throw new Error('Malformed Core guard status');
+  return result.active;
+ }
+
+ async issue(userId: string, centralGuard?: string): Promise<string> {
   if (!this.enabled || !userId) throw new Error('Manafield sessions not enabled');
-  const record: BrowserSession = { userId, createdAt: new Date().toISOString() };
+  if (centralGuard !== undefined && !await this.centralGuardActive(centralGuard)) {
+   throw new Error('Original Manafield browser session is revoked');
+  }
+  const record: BrowserSession = { userId, createdAt: new Date().toISOString(),
+   ...(centralGuard ? { centralGuard } : {}) };
   for (let attempt = 0; attempt < 3; attempt++) {
    const token = 'mfs1_' + randomBytes(32).toString('base64url');
    const result = await this.redis.set(sessionKey(token), JSON.stringify(record), 'EX', lifetimeSeconds, 'NX');
@@ -64,6 +86,7 @@ export class ManafieldSessionService {
    return null;
   }
   if (!record || typeof record.userId !== 'string' || !record.userId) return null;
+  if (record.centralGuard && !await this.centralGuardActive(record.centralGuard)) return null;
   const user = await this.usersRepository.findOneBy({ id: record.userId }) as MiLocalUser | null;
   if (!user || user.host !== null || user.isDeleted || user.isSuspended) return null;
   return user;
@@ -78,6 +101,11 @@ export class ManafieldSessionService {
   if (!this.enabled || !isManafieldBrowserSessionToken(token)) return false;
   // Always consult the central Redis store rather than a positive cache.
   // WebSockets must stop after a logout performed in another process.
-  return await this.redis.exists(sessionKey(token)) === 1;
+  const raw = await this.redis.get(sessionKey(token));
+  if (!raw) return false;
+  let record: BrowserSession;
+  try { record = JSON.parse(raw) as BrowserSession; } catch { return false; }
+  if (record.centralGuard) return await this.centralGuardActive(record.centralGuard);
+  return true;
  }
 }

@@ -116,6 +116,11 @@ function stubIssuer(identity: { sub: string; preferred_username: string; profile
    return new Response(JSON.stringify({ sub: identity.sub, preferred_username: identity.preferred_username }),
     { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
+  if (pathname === '/account/oauth/session-guard') {
+   return new Response(JSON.stringify({ session_guard: 'g'.repeat(43) }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+   });
+  }
   if (pathname === '/account/oauth/profile-handle') {
    const handle = Object.hasOwn(identity, 'profile_handle') ? identity.profile_handle : identity.preferred_username;
    return new Response(JSON.stringify({ sub: identity.sub, profile_handle: handle }),

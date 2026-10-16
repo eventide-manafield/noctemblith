@@ -46,8 +46,8 @@ const validOpaque = /^[A-Za-z0-9_-]{43}$/;
 
 type OAuthMode = 'link' | 'login';
 type FlowRecord = { mode: OAuthMode; verifier: string; proofHash: string; userId?: string };
-type TicketRecord = { userId: string; subjectUuid: string; canonicalHandle: string; accessToken: string; proofHash: string };
-type PendingProvision = { subjectUuid: string; canonicalHandle: string; accessToken: string };
+type TicketRecord = { userId: string; subjectUuid: string; canonicalHandle: string; accessToken: string; centralGuard: string; proofHash: string };
+type PendingProvision = { subjectUuid: string; canonicalHandle: string; accessToken: string; centralGuard: string };
 
 const secret = () => randomBytes(32).toString('base64url');
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -224,27 +224,46 @@ export class ManafieldSsoService {
   return { ...identity, publicHandle: handle };
  }
 
+ /**
+  * Ask Account Core to bind this OAuth login to the original central browser
+  * session. Unlike a 15-minute OAuth access token, this read-only guard lasts
+  * only as long as the original Core browser session.
+  */
+ private async issueCentralSessionGuard(accessToken: string): Promise<string> {
+  if (!this.settings || !validOpaque.test(accessToken)) throw new Error('Invalid OAuth proof');
+  const response = await fetch(new URL('/account/oauth/session-guard', this.settings.accountOrigin), {
+   method: 'POST',
+   headers: { 'Authorization': 'Bearer ' + accessToken, 'Accept': 'application/json' },
+   redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(6000),
+  });
+  const body = await boundedJson(response) as { session_guard?: unknown };
+  if (typeof body.session_guard !== 'string' || !validOpaque.test(body.session_guard)) {
+   throw new Error('Invalid central session guard');
+  }
+  return body.session_guard;
+ }
+
  private provisionKey(proof: string): string {
   // The browser receives only an HttpOnly cookie; no central bearer or UUID in URLs.
   return 'noctemblith:manafield:provision:' + digest(proof);
  }
 
- private async stageProvision(reply: FastifyReply, identity: ManafieldVerifiedIdentity, accessToken: string): Promise<void> {
+ private async stageProvision(reply: FastifyReply, identity: ManafieldVerifiedIdentity, accessToken: string, centralGuard: string): Promise<void> {
   const browserProof = createBrowserProof();
   if (identity.publicHandle == null) throw new Error('Public Profile handle required');
   const payload: PendingProvision = {
-   subjectUuid: identity.sub, canonicalHandle: identity.publicHandle, accessToken,
+   subjectUuid: identity.sub, canonicalHandle: identity.publicHandle, accessToken, centralGuard,
   };
   const result = await this.redis.set(this.provisionKey(browserProof), JSON.stringify(payload), 'EX', flowTTL, 'NX');
   if (result !== 'OK') throw new Error('Provisioning session unavailable');
   setProofCookie(reply, provisionCookieName, browserProof, flowTTL);
  }
 
- private async issueLoginTicket(reply: FastifyReply, account: MiLocalUser, identity: ManafieldVerifiedIdentity, accessToken: string): Promise<string> {
+ private async issueLoginTicket(reply: FastifyReply, account: MiLocalUser, identity: ManafieldVerifiedIdentity, accessToken: string, centralGuard: string): Promise<string> {
   const ticket = secret();
   const browserProof = createBrowserProof();
   if (identity.publicHandle == null) throw new Error('Public Profile handle required');
-  const value: TicketRecord = { userId: account.id, subjectUuid: identity.sub, canonicalHandle: identity.publicHandle, accessToken, proofHash: digest(browserProof) };
+  const value: TicketRecord = { userId: account.id, subjectUuid: identity.sub, canonicalHandle: identity.publicHandle, accessToken, centralGuard, proofHash: digest(browserProof) };
   const ok = await this.redis.set('noctemblith:manafield:login-ticket:' + ticket,
    JSON.stringify(value), 'EX', loginTicketTTL, 'NX');
   if (ok !== 'OK') throw new Error('One-time login ticket unavailable');
@@ -379,6 +398,7 @@ export class ManafieldSsoService {
       const linked = await this.linkUser(record.userId, verified);
       return reply.code(303).header('Location', safeRedirectTarget('link', linked)).send();
      }
+     const centralGuard = await this.issueCentralSessionGuard(accessToken);
      const account = await this.linkedUser(verified);
      if (!account) {
       // Same handle may already belong to an existing, unlinked local actor.
@@ -387,10 +407,10 @@ export class ManafieldSsoService {
        usernameLower: verified.publicHandle, host: IsNull(),
       });
       if (occupied) return reply.code(303).header('Location', safeRedirectTarget('login', 'unlinked')).send();
-      await this.stageProvision(reply, verified, accessToken);
+      await this.stageProvision(reply, verified, accessToken, centralGuard);
       return reply.code(303).header('Location', safeRedirectTarget('login', 'signup')).send();
      }
-     const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified, accessToken);
+     const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified, accessToken, centralGuard);
      return reply.code(303).header('Location', '/auth/manafield/finish?ticket=' + encodeURIComponent(ticket)).send();
     } catch {
      return reply.code(303).header('Location', safeRedirectTarget(record.mode, 'failed')).send();
@@ -433,7 +453,7 @@ export class ManafieldSsoService {
    try { pending = JSON.parse(raw) as PendingProvision; } catch {
     return reply.code(403).send({ error: 'provision_session_invalid' });
    }
-   if (!pending || !validOpaque.test(pending.accessToken) ||
+   if (!pending || !validOpaque.test(pending.accessToken) || !validOpaque.test(pending.centralGuard) ||
        !matchesManafieldHandle(pending.canonicalHandle, pending.canonicalHandle)) {
     return reply.code(403).send({ error: 'provision_session_invalid' });
    }
@@ -468,7 +488,7 @@ export class ManafieldSsoService {
       if (linked.length !== 1) throw new Error('Identity link collision; roll back actor');
      },
     });
-    const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified, pending.accessToken);
+    const ticket = await this.issueLoginTicket(reply, account as MiLocalUser, verified, pending.accessToken, pending.centralGuard);
     return { ticket };
    } catch {
     // Fail closed. OAuth needs restarting after a rejected/expired attempt.
@@ -503,7 +523,8 @@ export class ManafieldSsoService {
     if (typeof record.subjectUuid !== 'string' || typeof record.canonicalHandle !== 'string') {
      return reply.code(403).send({ error: 'identity_conflict' });
     }
-    if (typeof record.accessToken !== 'string' || !validOpaque.test(record.accessToken)) {
+    if (typeof record.accessToken !== 'string' || !validOpaque.test(record.accessToken) ||
+        !validOpaque.test(record.centralGuard)) {
      return reply.code(403).send({ error: 'identity_conflict' });
     }
     const verified = await this.revalidateIdentity(record.accessToken);
@@ -524,7 +545,7 @@ export class ManafieldSsoService {
    }
    // Use the existing sign-in path for login history and notifications.
    // The native token is returned in the same-origin POST response, never URL.
-   return this.signinService.signin(request, reply, local as MiLocalUser);
+   return this.signinService.signin(request, reply, local as MiLocalUser, record.centralGuard);
   });
  }
 }

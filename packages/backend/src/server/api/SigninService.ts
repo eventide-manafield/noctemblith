@@ -36,10 +36,10 @@ export class SigninService {
 	}
 
 	@bindThis
-	public async signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser) {
+	public async signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser, centralGuard?: string) {
 		// Integrated browsers never receive the shared, non-revocable native user token.
 		const loginToken = this.manafieldSessionService.enabled
-			? await this.manafieldSessionService.issue(user.id) : user.token!;
+			? await this.manafieldSessionService.issue(user.id, centralGuard) : user.token!;
 		setImmediate(async () => {
 			this.notificationService.createNotification(user.id, 'login', {});
 

@@ -27,7 +27,7 @@ function fixture() {
  return { service, redis, users, records, repo };
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe('Independent Manafield browser sessions', () => {
  it('issues distinct high-entropy tokens without storing plaintext tokens', async () => {
@@ -88,5 +88,45 @@ describe('Independent Manafield browser sessions', () => {
   const token = await service.issue('user-a');
   redis.get.mockRejectedValueOnce(new Error('redis unavailable'));
   await expect(service.resolve(token)).rejects.toThrow('redis unavailable');
+ });
+});
+
+
+describe('Central Core logout rejects the corresponding Noctemblith session', () => {
+ it('isolates central browser A from browser B and leaves B usable', async () => {
+  vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', 'true');
+  vi.stubEnv('NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN', 'https://manafield.studio');
+  const guards = new Map([['a'.repeat(43), true], ['b'.repeat(43), true]]);
+  const status = vi.fn(async (_url: unknown, init: { headers: Record<string, string> }) => {
+   const guard = init.headers.Authorization.slice('Bearer '.length);
+   return new Response(JSON.stringify({ active: guards.get(guard) ?? false }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+   });
+  });
+  vi.stubGlobal('fetch', status);
+  const { service } = fixture();
+  const laptop = await service.issue('user-a', 'a'.repeat(43));
+  const mobile = await service.issue('user-a', 'b'.repeat(43));
+  expect(await service.resolve(laptop)).toMatchObject({ id: 'user-a' });
+  expect(await service.resolve(mobile)).toMatchObject({ id: 'user-a' });
+  guards.set('a'.repeat(43), false); // Account Core browser A logged out
+  expect(await service.resolve(laptop)).toBeNull();
+  expect(await service.isActive(laptop)).toBe(false);
+  expect(await service.resolve(mobile)).toMatchObject({ id: 'user-a' });
+  expect(await service.isActive(mobile)).toBe(true);
+  expect(status).toHaveBeenCalled();
+ });
+
+ it('fails closed if Account Core guard status is unreachable or malformed', async () => {
+  vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', 'true');
+  vi.stubEnv('NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN', 'https://manafield.studio');
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ active: true }), {
+   status: 200, headers: { 'Content-Type': 'application/json' },
+  })));
+  const { service } = fixture();
+  const token = await service.issue('user-a', 'a'.repeat(43));
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('Core unavailable'); }));
+  await expect(service.resolve(token)).rejects.toThrow('Core unavailable');
+  await expect(service.isActive(token)).rejects.toThrow('Core unavailable');
  });
 });

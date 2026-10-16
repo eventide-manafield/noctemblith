@@ -30,7 +30,7 @@ describe('SigninService returns independent Manafield browser credentials', () =
   const response = await signer.signin(request as any, reply as any, user as any);
   expect(response).toMatchObject({ finished: true, id: user.id, i: 'mfs1_' + 'x'.repeat(43) });
   expect(response.i).not.toBe(user.token);
-  expect(session.issue).toHaveBeenCalledWith(user.id);
+  expect(session.issue).toHaveBeenCalledWith(user.id, undefined);
   await new Promise(resolve => setImmediate(resolve));
  });
  it('retains the original native login for standalone installations', async () => {
