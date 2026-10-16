@@ -16,6 +16,7 @@ function fixture(linked: boolean, integrated: boolean) {
   {} as any, {} as any, cache as any, sessions as any);
  return { service, db, sessions, users, user };
 }
+
 describe('Noctemblith auth respects device session revocation', () => {
  it('allows a revocable browser session token and validates it through the session store', async () => {
   const { service, sessions } = fixture(true, true);
