@@ -47,6 +47,7 @@ type Source = {
 		db?: string;
 		user?: string;
 		pass?: string;
+		schema?: string;
 		disableCache?: boolean;
 		extra?: { [x: string]: string };
 	};
@@ -145,6 +146,7 @@ export type Config = {
 		db: string;
 		user: string;
 		pass: string;
+		schema?: string;
 		disableCache?: boolean;
 		extra?: { [x: string]: string };
 	};
@@ -281,6 +283,18 @@ export function loadConfig(): Config {
 	const dbDb = config.db.db ?? process.env.DATABASE_DB ?? '';
 	const dbUser = config.db.user ?? process.env.DATABASE_USER ?? '';
 	const dbPass = config.db.pass ?? process.env.DATABASE_PASSWORD ?? '';
+	// The setting is optional for standalone deployments: otherwise PostgreSQL's
+	// configured search_path determines the default schema.
+	const dbSchema = config.db.schema;
+	if (dbSchema !== undefined && !/^[a-z_][a-z0-9_]{0,62}$/.test(dbSchema)) {
+		throw new Error('Invalid PostgreSQL schema: expected lowercase identifier (max 63 characters)');
+	}
+	// pg protocol startup option applies to ALL SQL, including raw queries and
+	// trigger functions. TypeORM's schema option alone is not enough for those.
+	const dbExtra = dbSchema ? {
+		...config.db.extra,
+		options: [config.db.extra?.options, `-csearch_path=${dbSchema}`].filter(Boolean).join(' '),
+	} : config.db.extra;
 
 	const externalMediaProxy = config.mediaProxy ?
 		config.mediaProxy.endsWith('/') ? config.mediaProxy.substring(0, config.mediaProxy.length - 1) : config.mediaProxy
@@ -314,7 +328,7 @@ export function loadConfig(): Config {
 		apiUrl: `${scheme}://${host}/api`,
 		authUrl: `${scheme}://${host}/auth`,
 		driveUrl: `${scheme}://${host}/files`,
-		db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass },
+		db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass, schema: dbSchema, extra: dbExtra },
 		dbReplications: config.dbReplications,
 		dbSlaves: config.dbSlaves,
 		fulltextSearch: config.fulltextSearch,

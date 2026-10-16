@@ -160,6 +160,10 @@ db:
   host: localhost
   port: 5432
 
+  # Optional per-service schema, created by the database administrator/Resource Provider.
+  # Omit to follow the PostgreSQL role's default search_path.
+  #schema: noctemblith
+
   # Database name
   db: misskey
 

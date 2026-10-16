@@ -38,6 +38,10 @@ db:
   host: db
   port: 5432
 
+  # Optional per-service schema, created by the database administrator/Resource Provider.
+  # Omit to follow the PostgreSQL role's default search_path.
+  #schema: noctemblith
+
   # Database name
   # You can set db from an environment variable instead.
   db: misskey
