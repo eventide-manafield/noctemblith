@@ -9,6 +9,9 @@ import type { MiMeta } from '@/models/Meta.js';
 import { ModerationLogService } from '@/core/ModerationLogService.js';
 import { Endpoint } from '@/server/api/endpoint-base.js';
 import { MetaService } from '@/core/MetaService.js';
+import type { Config } from '@/config.js';
+import { manafieldManagedStorageMetaKeys } from '@/misc/manafield-object-storage-binding.js';
+import { ApiError } from '@/server/api/error.js';
 
 export const meta = {
 	tags: ['admin'],
@@ -239,6 +242,9 @@ export const paramDef = {
 @Injectable()
 export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-disable-line import/no-default-export
 	constructor(
+		@Inject(DI.config)
+		private config: Config,
+
 		@Inject(DI.meta)
 		private serverSettings: MiMeta,
 
@@ -246,6 +252,22 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 		private moderationLogService: ModerationLogService,
 	) {
 		super(meta, paramDef, async (ps, me) => {
+			if (this.config.objectStorageBinding) {
+				// The administrator may edit unrelated settings, but Manafield-owned
+				// storage must never be replaced by a DB-persisted S3 credential.
+				for (const key of manafieldManagedStorageMetaKeys) {
+					const requested = ps[key];
+					const unchangedSecret = (key === 'objectStorageAccessKey' || key === 'objectStorageSecretKey') &&
+						(requested === null || requested === '');
+					if (requested !== undefined && !unchangedSecret && requested !== this.serverSettings[key]) {
+						throw new ApiError({
+							message: 'Object storage is managed by Manafield Resource Binding.',
+							code: 'MANAGED_OBJECT_STORAGE',
+							id: '996983e8-9630-4d52-9ba3-4f98352e74b5',
+						});
+					}
+				}
+			}
 			const set = {} as Partial<MiMeta>;
 
 			if (typeof ps.disableRegistration === 'boolean') {
@@ -542,56 +564,58 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				set.inquiryUrl = ps.inquiryUrl;
 			}
 
-			if (ps.useObjectStorage !== undefined) {
-				set.useObjectStorage = ps.useObjectStorage;
-			}
+			if (!this.config.objectStorageBinding) {
+				if (ps.useObjectStorage !== undefined) {
+					set.useObjectStorage = ps.useObjectStorage;
+				}
 
-			if (ps.objectStorageBaseUrl !== undefined) {
-				set.objectStorageBaseUrl = ps.objectStorageBaseUrl;
-			}
+				if (ps.objectStorageBaseUrl !== undefined) {
+					set.objectStorageBaseUrl = ps.objectStorageBaseUrl;
+				}
 
-			if (ps.objectStorageBucket !== undefined) {
-				set.objectStorageBucket = ps.objectStorageBucket;
-			}
+				if (ps.objectStorageBucket !== undefined) {
+					set.objectStorageBucket = ps.objectStorageBucket;
+				}
 
-			if (ps.objectStoragePrefix !== undefined) {
-				set.objectStoragePrefix = ps.objectStoragePrefix;
-			}
+				if (ps.objectStoragePrefix !== undefined) {
+					set.objectStoragePrefix = ps.objectStoragePrefix;
+				}
 
-			if (ps.objectStorageEndpoint !== undefined) {
-				set.objectStorageEndpoint = ps.objectStorageEndpoint;
-			}
+				if (ps.objectStorageEndpoint !== undefined) {
+					set.objectStorageEndpoint = ps.objectStorageEndpoint;
+				}
 
-			if (ps.objectStorageRegion !== undefined) {
-				set.objectStorageRegion = ps.objectStorageRegion;
-			}
+				if (ps.objectStorageRegion !== undefined) {
+					set.objectStorageRegion = ps.objectStorageRegion;
+				}
 
-			if (ps.objectStoragePort !== undefined) {
-				set.objectStoragePort = ps.objectStoragePort;
-			}
+				if (ps.objectStoragePort !== undefined) {
+					set.objectStoragePort = ps.objectStoragePort;
+				}
 
-			if (ps.objectStorageAccessKey !== undefined) {
-				set.objectStorageAccessKey = ps.objectStorageAccessKey;
-			}
+				if (ps.objectStorageAccessKey !== undefined) {
+					set.objectStorageAccessKey = ps.objectStorageAccessKey;
+				}
 
-			if (ps.objectStorageSecretKey !== undefined) {
-				set.objectStorageSecretKey = ps.objectStorageSecretKey;
-			}
+				if (ps.objectStorageSecretKey !== undefined) {
+					set.objectStorageSecretKey = ps.objectStorageSecretKey;
+				}
 
-			if (ps.objectStorageUseSSL !== undefined) {
-				set.objectStorageUseSSL = ps.objectStorageUseSSL;
-			}
+				if (ps.objectStorageUseSSL !== undefined) {
+					set.objectStorageUseSSL = ps.objectStorageUseSSL;
+				}
 
-			if (ps.objectStorageUseProxy !== undefined) {
-				set.objectStorageUseProxy = ps.objectStorageUseProxy;
-			}
+				if (ps.objectStorageUseProxy !== undefined) {
+					set.objectStorageUseProxy = ps.objectStorageUseProxy;
+				}
 
-			if (ps.objectStorageSetPublicRead !== undefined) {
-				set.objectStorageSetPublicRead = ps.objectStorageSetPublicRead;
-			}
+				if (ps.objectStorageSetPublicRead !== undefined) {
+					set.objectStorageSetPublicRead = ps.objectStorageSetPublicRead;
+				}
 
-			if (ps.objectStorageS3ForcePathStyle !== undefined) {
-				set.objectStorageS3ForcePathStyle = ps.objectStorageS3ForcePathStyle;
+				if (ps.objectStorageS3ForcePathStyle !== undefined) {
+					set.objectStorageS3ForcePathStyle = ps.objectStorageS3ForcePathStyle;
+				}
 			}
 
 			if (ps.deeplAuthKey !== undefined) {

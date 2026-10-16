@@ -1,0 +1,35 @@
+{
+  "id": "noctemblith",
+  "name": "Noctemblith Social",
+  "description": "Manafield-managed Noctemblith social service; PostgreSQL state and S3-compatible media are required.",
+  "version": "0.0.1",
+  "healthOperation": "health",
+  "requires": {
+    "capabilities": {
+      "state": {
+        "id": "database.postgresql",
+        "version": "^1.0.0"
+      },
+      "media": {
+        "id": "storage.object",
+        "version": "^1.0.0"
+      }
+    }
+  },
+  "operations": [
+    {
+      "id": "health",
+      "description": "Checks the existing Noctemblith server readiness, including PostgreSQL and Redis.",
+      "input": null,
+      "output": null,
+      "binding": {
+        "type": "http",
+        "method": "GET",
+        "path": "/healthz",
+        "codecs": [
+          "json"
+        ]
+      }
+    }
+  ]
+}
