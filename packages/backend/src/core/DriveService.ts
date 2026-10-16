@@ -393,20 +393,11 @@ export class DriveService {
 		);
 		if (this.meta.objectStorageSetPublicRead) params.ACL = 'public-read';
 
-		await this.s3Service.upload(this.meta, params)
-			.then(
-				result => {
-					if ('Bucket' in result) { // CompleteMultipartUploadCommandOutput
-						this.registerLogger.debug(`Uploaded: ${result.Bucket}/${result.Key} => ${result.Location}`);
-					} else { // AbortMultipartUploadCommandOutput
-						this.registerLogger.error(`Upload Result Aborted: key = ${key}, filename = ${filename}`);
-					}
-				})
-			.catch(
-				err => {
-					this.registerLogger.error(`Upload Failed: key = ${key}, filename = ${filename}`, err);
-				},
-			);
+		// Propagate upload failures: do not save a Drive record whose object was not stored.
+		const result = await this.s3Service.upload(this.meta, params);
+		if ('Bucket' in result) {
+			this.registerLogger.debug(`Uploaded: ${result.Bucket}/${result.Key} => ${result.Location}`);
+		}
 	}
 
 	// Expire oldest file (without avatar or banner) of remote user

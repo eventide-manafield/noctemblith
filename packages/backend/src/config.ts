@@ -12,6 +12,8 @@ import type * as SentryVue from '@sentry/vue';
 import type { RedisOptions as IoRedisRedisOptions } from 'ioredis';
 import type { RedisOptions as BullMqRedisOptions } from 'bullmq';
 import type { AccessLogConfiguration, LogFormat, LogLevelSetting } from './logging/types.js';
+import { readManafieldDatabaseBinding } from './misc/manafield-database-binding.js';
+import { readManafieldObjectStorageBinding, type ManafieldObjectStorageBinding } from './misc/manafield-object-storage-binding.js';
 
 type RedisOptionsRequiredFields = {
 	host: string;
@@ -133,6 +135,8 @@ type Source = {
 };
 
 export type Config = {
+	/** Managed S3 Resource (private credentials remain in mounted files). */
+	objectStorageBinding: ManafieldObjectStorageBinding | null;
 	url: string;
 	port: number;
 	socket: string | undefined;
@@ -280,12 +284,17 @@ export function loadConfig(): Config {
 	const scheme = url.protocol.replace(/:$/, '');
 	const wsScheme = scheme.replace('http', 'ws');
 
+	const managedDatabaseBinding = readManafieldDatabaseBinding();
+	const objectStorageBinding = readManafieldObjectStorageBinding();
+	if (managedDatabaseBinding && config.dbReplications) {
+		throw new Error('Manafield managed PostgreSQL binding does not support independently configured database replicas');
+	}
 	const dbDb = config.db.db ?? process.env.DATABASE_DB ?? '';
 	const dbUser = config.db.user ?? process.env.DATABASE_USER ?? '';
 	const dbPass = config.db.pass ?? process.env.DATABASE_PASSWORD ?? '';
 	// The setting is optional for standalone deployments: otherwise PostgreSQL's
 	// configured search_path determines the default schema.
-	const dbSchema = config.db.schema;
+	const dbSchema = managedDatabaseBinding?.schema ?? config.db.schema;
 	if (dbSchema !== undefined && !/^[a-z_][a-z0-9_]{0,62}$/.test(dbSchema)) {
 		throw new Error('Invalid PostgreSQL schema: expected lowercase identifier (max 63 characters)');
 	}
@@ -303,6 +312,7 @@ export function loadConfig(): Config {
 	const redis = convertRedisOptions(config.redis, host);
 
 	return {
+		objectStorageBinding,
 		version,
 		publishTarballInsteadOfProvideRepositoryUrl: !!config.publishTarballInsteadOfProvideRepositoryUrl,
 		setupPassword: config.setupPassword,
@@ -328,7 +338,16 @@ export function loadConfig(): Config {
 		apiUrl: `${scheme}://${host}/api`,
 		authUrl: `${scheme}://${host}/auth`,
 		driveUrl: `${scheme}://${host}/files`,
-		db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass, schema: dbSchema, extra: dbExtra },
+		db: managedDatabaseBinding ? {
+			host: managedDatabaseBinding.host,
+			port: managedDatabaseBinding.port,
+			db: managedDatabaseBinding.db,
+			user: managedDatabaseBinding.user,
+			pass: managedDatabaseBinding.pass,
+			schema: dbSchema,
+			extra: dbExtra,
+			disableCache: config.db.disableCache,
+		} : { ...config.db, db: dbDb, user: dbUser, pass: dbPass, schema: dbSchema, extra: dbExtra },
 		dbReplications: config.dbReplications,
 		dbSlaves: config.dbSlaves,
 		fulltextSearch: config.fulltextSearch,

@@ -10,6 +10,7 @@ import { Meilisearch } from 'meilisearch';
 import { MiMeta } from '@/models/Meta.js';
 import { DI } from './di-symbols.js';
 import { Config, loadConfig } from './config.js';
+import { applyManafieldObjectStorageMetadata } from './misc/manafield-object-storage-binding.js';
 import { createPostgresDataSource } from './postgres.js';
 import { RepositoryModule } from './models/RepositoryModule.js';
 import { allSettled } from './misc/promise-tracker.js';
@@ -99,7 +100,7 @@ const $redisForReactions: Provider = {
 
 const $meta: Provider = {
 	provide: DI.meta,
-	useFactory: async (db: DataSource, redisForSub: Redis.Redis) => {
+	useFactory: async (db: DataSource, redisForSub: Redis.Redis, config: Config) => {
 		const meta = await db.transaction(async transactionalEntityManager => {
 			// 過去のバグでレコードが複数出来てしまっている可能性があるので新しいIDを優先する
 			const metas = await transactionalEntityManager.find(MiMeta, {
@@ -128,6 +129,10 @@ const $meta: Provider = {
 			}
 		});
 
+		// Override only public metadata. Never put S3 credentials in the DB Meta,
+		// an internal update event, or the admin/meta API response.
+		applyManafieldObjectStorageMetadata(meta, config.objectStorageBinding);
+
 		async function onMessage(_: string, data: string): Promise<void> {
 			const obj = JSON.parse(data);
 
@@ -139,6 +144,7 @@ const $meta: Provider = {
 							(meta as any)[key] = (body.after as any)[key];
 						}
 						meta.rootUser = null; // joinなカラムは通常取ってこないので
+						applyManafieldObjectStorageMetadata(meta, config.objectStorageBinding);
 						break;
 					}
 					default:
@@ -151,7 +157,7 @@ const $meta: Provider = {
 
 		return meta;
 	},
-	inject: [DI.db, DI.redisForSub],
+	inject: [DI.db, DI.redisForSub, DI.config],
 };
 
 @Global()
