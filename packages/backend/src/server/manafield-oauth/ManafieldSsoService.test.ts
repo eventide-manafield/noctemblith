@@ -87,7 +87,7 @@ function createMockService() {
  }) };
  const config = { url: ownOrigin + '/' };
  const signup = {
-  signup: vi.fn(async (args: { username: string; onCreatedInTransaction?: (manager: unknown, user: typeof user) => Promise<void> }) => {
+  signup: vi.fn(async (args: { username: string; onCreatedInTransaction?: (manager: unknown, createdUser: typeof user) => Promise<void> }) => {
    if (createdUsers.some(u => u.username === args.username)) throw new Error('duplicate username');
    const created = { ...user, id: 'jit-' + args.username, username: args.username, token: 'j'.repeat(16) };
    await args.onCreatedInTransaction?.({ query: db.query }, created);
