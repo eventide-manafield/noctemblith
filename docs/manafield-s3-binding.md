@@ -93,3 +93,28 @@ service deployment. The existing Manafield CLI v0 alone does not provision
 Noctemblith Redis/Instance configuration. Jenkins S3 releases are still
 explicitly rejected until separately implemented. Never reset the live DB,
 remove a live bucket, or rotate existing keys as part of this adapter work.
+
+
+### 공개 도메인 활성화 후 임시 객체 전송 검증 (명시적 실행만 허용)
+
+R2 도메인이 활성화되어도 루트 경로의 HTTP 403/404만으로는
+업로드된 파일의 공개 접근 여부를 판단할 수 없다. 실험용 객체
+하나를 전송해 확인하려면 다음 명령을 관리자가 **직접 실행**한다:
+
+```bash
+sudo node \
+  /opt/manafield/ai-workspace/noctemblith-r2-binding-20261016/packages/backend/scripts/check_manafield_s3_public_delivery.mjs \
+  /opt/manafield/ai-workspace/instance \
+  manafield-r2 \
+  --write-temporary-object
+```
+
+이 명령은 테스트용 경로
+`modules/noctemblith/media/.manafield-probe/<random UUID>.txt`에
+한 개의 **새 객체를 쓰고**, 같은 객체를 인증된 S3 API로 조회하고,
+`publicBaseUrl`에서 인증 없이 GET한 뒤 **해당 테스트 객체만 삭제**한다.
+다른 객체를 변경하거나 목록을 출력하지 않는다. 삭제가 실패하면
+복구에 필요한 **테스트 객체 키만** 표시한다.
+
+마나필드가 사용자의 동의 없이 이 스크립트를 자동 실행하지 않는다.
+본체 SNS 서비스 배포·프로덕션 파일 테스트와는 무관하다.
