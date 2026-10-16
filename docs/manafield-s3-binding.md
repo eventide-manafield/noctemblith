@@ -6,6 +6,7 @@ protocol. The Module manifest explicitly requires two different Capabilities:
 
 - `state`: `database.postgresql@^1.0.0` (required; MySQL is **not** supported)
 - `media`: `storage.object@^1.0.0` (S3-compatible storage, R2 first)
+- `cache`: `cache.redis@^1.0.0` (Redis cache, job queue and pub/sub)
 
 The manifest is for the **Noctemblith backend application**, not for the
 existing `manafield-noctite` read-only status observer. Do not replace the
@@ -36,8 +37,9 @@ modules:
       media: manafield-r2
 ```
 
-The executor injects the `MANAFIELD_BINDING_STATE_*` PostgreSQL values and
-`MANAFIELD_BINDING_MEDIA_*` storage values. In managed mode Noctemblith
+The executor injects `MANAFIELD_BINDING_STATE_*` PostgreSQL,
+`MANAFIELD_BINDING_MEDIA_*` S3 storage and `MANAFIELD_BINDING_CACHE_*`
+Redis cache settings, including private password file paths. In managed mode Noctemblith
 **fails closed** if either declared binding is incomplete; standalone mode
 retains its existing YAML and DB-backed object-storage setup.
 
@@ -118,3 +120,17 @@ sudo node \
 
 마나필드가 사용자의 동의 없이 이 스크립트를 자동 실행하지 않는다.
 본체 SNS 서비스 배포·프로덕션 파일 테스트와는 무관하다.
+
+## Managed Redis and runtime configuration
+
+A Manafield-managed Noctemblith also requires a bound `cache.redis` Resource.
+Redis serves application queues, cache and pub/sub on the Manafield modules
+network, with a private password mounted as a read-only file. The Redis key
+prefix keeps trusted Module keys separate but is **not** Redis ACL isolation.
+
+In managed mode the backend uses an immutable runtime configuration derived
+from `MANAFIELD_MODULE_PUBLIC_URL`, `PORT` and the three explicit Resource
+Bindings. It does not need or rewrite the legacy `.config/default.yml`,
+and does not silently fall back to its old standalone DB/Redis/S3 settings.
+An operator must still stage the public ingress route separately before
+turning on federation and production accounts.

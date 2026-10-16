@@ -44,6 +44,13 @@ function yamlToJson(ymlPath) {
 	}), 'utf-8');
 }
 
+// Managed Noctemblith reads its runtime definition and Resource Bindings
+// directly from the environment; no writable .config/default.yml is required.
+if (process.env.MANAFIELD_MODULE_ID !== undefined || process.env.MANAFIELD_MANAGED === '1') {
+	console.log('Manafield-managed runtime: external configuration selected.');
+	process.exit(0);
+}
+
 if (process.env.MISSKEY_CONFIG_YML) {
 	const customYmlPath = resolve(configDir, process.env.MISSKEY_CONFIG_YML);
 	yamlToJson(customYmlPath);
