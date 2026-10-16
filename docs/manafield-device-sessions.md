@@ -28,14 +28,16 @@ already-invalid token; unexpected failures leave local state intact for retry.
 
 ## Legacy migration and limitations
 
-- Existing shared 16-character native tokens of **already-linked** accounts are
-  deliberately denied by the ordinary integrated API/WS authentication path. Otherwise
-  those old tokens would bypass the new per-device session revocation.
+- Existing shared 16-character native tokens are deliberately denied by the ordinary
+  integrated API/WS authentication path (including local root accounts). Otherwise
+  those old tokens would bypass per-device session revocation.
 - Browser clients holding such tokens need to sign in **once** through the Manafield
   login path after installing this build. Existing account and ActivityPub records remain
   intact. Native possession proof remains available only through the existing-account
   linking endpoint, not the normal API.
-- Unlinked integration root/bootstrap native access remains available for local management.
+- Integrated local root/bootstrap users can still perform **native password/passkey login**
+  (the resulting browser credential is an independent session token), but cannot use
+  the old shared native token to authenticate routine API/WS requests.
 - Third-party app / MiAuth access tokens remain separate from browser sessions and are
   not revoked when the browser signs out.
 - Central **global logout** backchannel, central-session ownership mapping, all-devices
