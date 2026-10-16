@@ -12,7 +12,7 @@ function fixture(linked: boolean, integrated: boolean) {
  const db = { query: vi.fn(async () => linked ? [{ one: 1 }] : []) };
  const cache = { localUserByNativeTokenCache: { fetch: vi.fn(async (_token: string, getter: () => Promise<any>) => getter()) } };
  const sessions = { enabled: integrated, resolve: vi.fn(async () => user) };
- const service = new AuthenticateService(users as any, db as any,
+ const service = new AuthenticateService(users as any,
   {} as any, {} as any, cache as any, sessions as any);
  return { service, db, sessions, users, user };
 }
@@ -25,17 +25,17 @@ describe('Noctemblith auth respects device session revocation', () => {
   sessions.resolve.mockResolvedValueOnce(null as any);
   await expect(service.authenticate(token)).rejects.toThrow(AuthenticationError);
  });
- it('does not allow the shared native token to bypass logout for a linked user', async () => {
-  const { service, db } = fixture(true, true);
-  await expect(service.authenticate('n'.repeat(16))).rejects.toThrow(AuthenticationError);
-  expect(db.query).toHaveBeenCalledOnce();
+ it('does not allow any shared native token to bypass logout in integrated mode', async () => {
+  for (const linked of [false, true]) {
+   const { service, users } = fixture(linked, true);
+   await expect(service.authenticate('n'.repeat(16))).rejects.toThrow(AuthenticationError);
+   expect(users.findOneBy).not.toHaveBeenCalled();
+  }
  });
- it('keeps native credential proof available only to account-linking and keeps unlinked admin access', async () => {
+ it('allows native token proof only through the linking-specific method', async () => {
   const linked = fixture(true, true);
   expect(await linked.service.authenticateNativeForLink('n'.repeat(16))).toMatchObject({ id: 'local-a' });
   await expect(linked.service.authenticate('n'.repeat(16))).rejects.toThrow(AuthenticationError);
-  const unlinked = fixture(false, true);
-  expect((await unlinked.service.authenticate('n'.repeat(16)))[0]?.id).toBe('local-a');
  });
  it('preserves standalone native authentication unchanged', async () => {
   const { service, db } = fixture(true, false);
