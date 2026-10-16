@@ -31,6 +31,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
 import { login } from '@/accounts.js';
+import { isValidManafieldLoginToken } from '@/utility/manafield-login-token.js';
 import { definePage } from '@/page.js';
 import MkButton from '@/components/MkButton.vue';
 
@@ -58,7 +59,7 @@ async function completeLogin(ticket: string): Promise<void> {
   throw new Error('expired_or_invalid_ticket');
  }
  const result = await response.json() as { finished?: boolean; i?: unknown };
- if (result.finished !== true || typeof result.i !== 'string' || result.i.length !== 16) {
+ if (result.finished !== true || !isValidManafieldLoginToken(result.i)) {
   throw new Error('invalid_login_response');
  }
  await login(result.i, '/');
