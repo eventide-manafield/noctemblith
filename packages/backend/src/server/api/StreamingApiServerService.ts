@@ -13,6 +13,7 @@ import { bindThis } from '@/decorators.js';
 import { MiLocalUser } from '@/models/User.js';
 import { UserService } from '@/core/UserService.js';
 import { AuthenticateService, AuthenticationError } from './AuthenticateService.js';
+import { ManafieldSessionService, isManafieldBrowserSessionToken } from '@/server/manafield-oauth/ManafieldSessionService.js';
 import MainStreamConnection, { ConnectionRequest } from './stream/Connection.js';
 import type * as http from 'node:http';
 import { ContextIdFactory, ModuleRef } from '@nestjs/core';
@@ -21,6 +22,9 @@ import { ContextIdFactory, ModuleRef } from '@nestjs/core';
 export class StreamingApiServerService {
 	#wss: WebSocket.WebSocketServer;
 	#connections = new Map<WebSocket.WebSocket, number>();
+	#sessionConnections = new Map<WebSocket.WebSocket, string>();
+	#sessionValidationIntervalId: NodeJS.Timeout | null = null;
+	#checkingSessions = false;
 	#cleanConnectionsIntervalId: NodeJS.Timeout | null = null;
 
 	constructor(
@@ -30,6 +34,7 @@ export class StreamingApiServerService {
 		private moduleRef: ModuleRef,
 		private authenticateService: AuthenticateService,
 		private usersService: UserService,
+		private manafieldSessionService: ManafieldSessionService,
 	) {
 	}
 
@@ -93,6 +98,9 @@ export class StreamingApiServerService {
 			await stream.init();
 
 			this.#wss.handleUpgrade(request, socket, head, (ws) => {
+				if (typeof token === 'string' && isManafieldBrowserSessionToken(token)) {
+					this.#sessionConnections.set(ws, token);
+				}
 				this.#wss.emit('connection', ws, request, {
 					stream, user, app,
 				});
@@ -137,6 +145,7 @@ export class StreamingApiServerService {
 				stream.dispose();
 				globalEv.off('message', onRedisMessage);
 				this.#connections.delete(connection);
+				this.#sessionConnections.delete(connection);
 				if (userUpdateIntervalId) clearInterval(userUpdateIntervalId);
 			});
 
@@ -144,6 +153,28 @@ export class StreamingApiServerService {
 				this.#connections.set(connection, Date.now());
 			});
 		});
+
+		// Existing WebSockets must not outlive a revoked browser session.
+		// Redis is the authority; no positive cache and fail closed on store errors.
+		this.#sessionValidationIntervalId = setInterval(async () => {
+			if (this.#checkingSessions) return;
+			this.#checkingSessions = true;
+			try {
+				for (const [connection, token] of this.#sessionConnections) {
+					try {
+						if (!await this.manafieldSessionService.isActive(token)) {
+							connection.close(4001, 'Session ended');
+							this.#sessionConnections.delete(connection);
+						}
+					} catch {
+						connection.close(4001, 'Session validation unavailable');
+						this.#sessionConnections.delete(connection);
+					}
+				}
+			} finally {
+				this.#checkingSessions = false;
+			}
+		}, 10000);
 
 		// 一定期間通信が無いコネクションは実際には切断されている可能性があるため定期的にterminateする
 		this.#cleanConnectionsIntervalId = setInterval(() => {
@@ -161,6 +192,11 @@ export class StreamingApiServerService {
 
 	@bindThis
 	public detach(): Promise<void> {
+		if (this.#sessionValidationIntervalId) {
+			clearInterval(this.#sessionValidationIntervalId);
+			this.#sessionValidationIntervalId = null;
+		}
+		this.#sessionConnections.clear();
 		if (this.#cleanConnectionsIntervalId) {
 			clearInterval(this.#cleanConnectionsIntervalId);
 			this.#cleanConnectionsIntervalId = null;

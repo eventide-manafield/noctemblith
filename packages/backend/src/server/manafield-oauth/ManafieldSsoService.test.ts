@@ -74,8 +74,12 @@ function createMockService() {
  };
  const repository = { findOneBy: vi.fn(async ({ id, usernameLower }: { id?: string; usernameLower?: string }) =>
   [user, otherUser, ...createdUsers].find(u => id ? u.id === id : u.username.toLowerCase() === usernameLower) ?? null) };
- const auth = { authenticate: vi.fn(async (token: string) =>
-  [user, otherUser].find(u => u.token === token) ? [[user, otherUser].find(u => u.token === token), null] : [null, null]) };
+ const auth = {
+  authenticate: vi.fn(async (token: string) =>
+   [user, otherUser].find(u => u.token === token) ? [[user, otherUser].find(u => u.token === token), null] : [null, null]),
+  authenticateNativeForLink: vi.fn(async (token: string) =>
+   [user, otherUser].find(u => u.token === token) ?? null),
+ };
  const role = { isModerator: vi.fn(async () => false) };
  const signin = { signin: vi.fn((_request: unknown, reply: { code(n: number): unknown }, u: typeof user) => {
   reply.code(200);
@@ -92,11 +96,12 @@ function createMockService() {
   }),
  };
 
+ const sessions = { enabled: true, revoke: vi.fn(async () => true) };
  const service = new ManafieldSsoService(config as any, redis as any, db as any,
-  repository as any, auth as any, role as any, signin as any, signup as any);
+  repository as any, auth as any, role as any, signin as any, signup as any, sessions as any);
  const app = Fastify();
  service.registerRoutes(app);
- return { app, user, otherUser, createdUsers, redis, db, links, role, signin, signup };
+ return { app, user, otherUser, createdUsers, redis, db, links, role, signin, signup, sessions };
 }
 
 function stubIssuer(identity: { sub: string; preferred_username: string; profile_handle?: string | null } =
@@ -131,7 +136,7 @@ describe('Manafield dev SSO existing-account ownership', () => {
  it('is disabled by default, leaving local login intact', async () => {
   vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', '');
   const service = new ManafieldSsoService({ url: ownOrigin } as any, {} as any,
-   {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+   {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   const app = Fastify();
   service.registerRoutes(app);
   try {
@@ -480,5 +485,35 @@ describe('Manafield consent-based just-in-time account provisioning', () => {
    expect(finish.json()).toMatchObject({ error: 'identity_conflict' });
    expect(signin.signin).not.toHaveBeenCalled();
   } finally { await app.close(); }
+ });
+});
+
+
+describe('Manafield browser-only logout route', () => {
+ it('revokes exactly the presented browser session, not Account Core', async () => {
+  const { app, sessions } = createMockService();
+  try {
+   const token = 'mfs1_' + 's'.repeat(43);
+   const headers = { origin: ownOrigin, 'sec-fetch-site': 'same-origin', authorization: 'Bearer ' + token };
+   const result = await app.inject({ method: 'POST', url: '/auth/manafield/session/logout', headers });
+   expect(result.statusCode).toBe(204);
+   expect(sessions.revoke).toHaveBeenCalledExactlyOnceWith(token);
+   sessions.revoke.mockResolvedValueOnce(false);
+   expect((await app.inject({ method: 'POST', url: '/auth/manafield/session/logout', headers })).statusCode).toBe(401);
+  } finally {
+   await app.close();
+  }
+ });
+ it('rejects missing, old shared-native, and cross-origin credentials', async () => {
+  const { app, sessions } = createMockService();
+  try {
+   const url = '/auth/manafield/session/logout';
+   expect((await app.inject({ method: 'POST', url, headers: { origin: ownOrigin } })).statusCode).toBe(401);
+   expect((await app.inject({ method: 'POST', url, headers: { origin: ownOrigin, authorization: 'Bearer ' + nativeToken } })).statusCode).toBe(401);
+   expect((await app.inject({ method: 'POST', url, headers: { origin: 'https://evil.invalid', authorization: 'Bearer mfs1_' + 'a'.repeat(43) } })).statusCode).toBe(403);
+   expect(sessions.revoke).not.toHaveBeenCalled();
+  } finally {
+   await app.close();
+  }
  });
 });

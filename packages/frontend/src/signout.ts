@@ -6,7 +6,7 @@
 import { apiUrl } from '@@/js/config.js';
 import { cloudBackup } from '@/preferences/utility.js';
 import { store } from '@/store.js';
-import { waiting } from '@/os.js';
+import { waiting, alert } from '@/os.js';
 import { unisonReload } from '@/utility/unison-reload.js';
 import { clear } from '@/utility/idb-proxy.js';
 import { $i } from '@/i.js';
@@ -14,6 +14,31 @@ import { encodePushSubscriptionKey } from '@/utility/encode-push-subscription-ke
 
 export async function signout() {
 	if (!$i) return;
+
+	// Integrated browser tokens are individually revocable. Never delete the
+	// Account Core session when leaving Noctemblith. Standalone users retain
+	// the historical local-only sign-out behavior.
+	if (/^mfs1_[A-Za-z0-9_-]{43}$/.test($i.token)) {
+		try {
+			const response = await window.fetch('/auth/manafield/session/logout', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Authorization': 'Bearer ' + $i.token },
+				cache: 'no-store',
+			});
+			// An already-revoked session can safely be removed from browser storage.
+			if (response.status !== 204 && response.status !== 401) {
+				throw new Error('Session logout rejected');
+			}
+		} catch {
+			await alert({
+				type: 'error',
+				title: '로그아웃에 실패했습니다',
+				text: '서버에서 로그인 세션을 종료하지 못했습니다. 다시 시도해 주세요.',
+			});
+			return;
+		}
+	}
 
 	waiting();
 

@@ -16,6 +16,7 @@ import type { UsersRepository } from '@/models/_.js';
 import type { MiLocalUser } from '@/models/User.js';
 import { RoleService } from '@/core/RoleService.js';
 import { SigninService } from '@/server/api/SigninService.js';
+import { ManafieldSessionService, isManafieldBrowserSessionToken } from './ManafieldSessionService.js';
 import { SignupService } from '@/core/SignupService.js';
 import { AuthenticateService } from '@/server/api/AuthenticateService.js';
 import {
@@ -120,6 +121,7 @@ export class ManafieldSsoService {
   private roleService: RoleService,
   private signinService: SigninService,
   private signupService: SignupService,
+  private sessionService: ManafieldSessionService,
  ) {
   this.settings = process.env.NOCTEMBLITH_MANAFIELD_SSO_ENABLED === 'true'
    ? readManafieldOAuthSettings(process.env, config.url)
@@ -145,8 +147,8 @@ export class ManafieldSsoService {
   // delegated access token with narrower or potentially unrelated scopes.
   if (token.length !== 16) return null;
   try {
-   const [user, delegatedToken] = await this.authenticateService.authenticate(token);
-   return user && delegatedToken == null ? this.liveLocalUser(user.id) : null;
+   const user = await this.authenticateService.authenticateNativeForLink(token);
+   return user ? this.liveLocalUser(user.id) : null;
   } catch {
    return null;
   }
@@ -291,6 +293,22 @@ export class ManafieldSsoService {
   fastify.get('/auth/manafield/status', async (_request, reply) => {
    noStore(reply);
    return { enabled: this.settings != null };
+  });
+
+  // Logout only this browser's Noctemblith session; never end Account Core's session.
+  fastify.post('/auth/manafield/session/logout', async (request, reply) => {
+   noStore(reply);
+   if (!this.settings || !this.sessionService.enabled) return reply.code(503).send({ error: 'not_configured' });
+   if (!this.originAllowed(request)) return reply.code(403).send({ error: 'forbidden' });
+   const authorization = request.headers.authorization;
+   const token = typeof authorization === 'string' && authorization.startsWith('Bearer ')
+    ? authorization.slice(7) : '';
+   if (!isManafieldBrowserSessionToken(token)) return reply.code(401).send({ error: 'session_required' });
+   // Do not trust a caller-supplied user ID: session ownership comes only from Redis.
+   // A second logout of the same session is intentionally unauthorized.
+   const revoked = await this.sessionService.revoke(token);
+   if (!revoked) return reply.code(401).send({ error: 'session_expired' });
+   return reply.code(204).send();
   });
 
   fastify.post('/auth/manafield/link/status', async (request, reply) => {
