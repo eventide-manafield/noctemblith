@@ -488,7 +488,6 @@ describe('Manafield consent-based just-in-time account provisioning', () => {
  });
 });
 
-
 describe('Manafield browser-only logout route', () => {
  it('revokes exactly the presented browser session, not Account Core', async () => {
   const { app, sessions } = createMockService();
