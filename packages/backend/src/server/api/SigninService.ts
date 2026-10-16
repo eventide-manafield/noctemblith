@@ -14,6 +14,7 @@ import { SigninEntityService } from '@/core/entities/SigninEntityService.js';
 import { bindThis } from '@/decorators.js';
 import { EmailService } from '@/core/EmailService.js';
 import { NotificationService } from '@/core/NotificationService.js';
+import { ManafieldSessionService } from '@/server/manafield-oauth/ManafieldSessionService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
 @Injectable()
@@ -30,11 +31,15 @@ export class SigninService {
 		private notificationService: NotificationService,
 		private idService: IdService,
 		private globalEventService: GlobalEventService,
+		private manafieldSessionService: ManafieldSessionService,
 	) {
 	}
 
 	@bindThis
-	public signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser) {
+	public async signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser) {
+		// Integrated browsers never receive the shared, non-revocable native user token.
+		const loginToken = this.manafieldSessionService.enabled
+			? await this.manafieldSessionService.issue(user.id) : user.token!;
 		setImmediate(async () => {
 			this.notificationService.createNotification(user.id, 'login', {});
 
@@ -60,7 +65,7 @@ export class SigninService {
 		return {
 			finished: true,
 			id: user.id,
-			i: user.token!,
+			i: loginToken,
 		} satisfies Misskey.entities.SigninFlowResponse;
 	}
 }

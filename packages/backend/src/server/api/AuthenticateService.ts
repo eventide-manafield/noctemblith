@@ -4,6 +4,7 @@
  */
 
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { AccessTokensRepository, AppsRepository, UsersRepository } from '@/models/_.js';
 import type { MiLocalUser } from '@/models/User.js';
@@ -12,6 +13,7 @@ import { MemoryKVCache } from '@/misc/cache.js';
 import type { MiApp } from '@/models/App.js';
 import { CacheService } from '@/core/CacheService.js';
 import { isNativeUserToken } from '@/misc/token.js';
+import { ManafieldSessionService, isManafieldBrowserSessionToken } from '@/server/manafield-oauth/ManafieldSessionService.js';
 import { bindThis } from '@/decorators.js';
 
 export class AuthenticationError extends Error {
@@ -29,6 +31,9 @@ export class AuthenticateService implements OnApplicationShutdown {
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
 
+		@Inject(DI.db)
+		private db: DataSource,
+
 		@Inject(DI.accessTokensRepository)
 		private accessTokensRepository: AccessTokensRepository,
 
@@ -36,6 +41,7 @@ export class AuthenticateService implements OnApplicationShutdown {
 		private appsRepository: AppsRepository,
 
 		private cacheService: CacheService,
+		private manafieldSessionService: ManafieldSessionService,
 	) {
 		this.appCache = new MemoryKVCache<MiApp>(1000 * 60 * 60 * 24 * 7); // 1w
 	}
@@ -46,6 +52,11 @@ export class AuthenticateService implements OnApplicationShutdown {
 			return [null, null];
 		}
 
+		if (isManafieldBrowserSessionToken(token)) {
+			const user = await this.manafieldSessionService.resolve(token);
+			if (user == null) throw new AuthenticationError('browser session revoked or expired');
+			return [user, null];
+		}
 		if (isNativeUserToken(token)) {
 			const user = await this.cacheService.localUserByNativeTokenCache.fetch(token,
 				() => this.usersRepository.findOneBy({ token }) as Promise<MiLocalUser | null>);
@@ -53,7 +64,18 @@ export class AuthenticateService implements OnApplicationShutdown {
 			if (user == null) {
 				throw new AuthenticationError('user not found');
 			}
-
+			// Never let a legacy shared native token bypass device-session revocation
+			// for users already linked to Manafield. Unlinked local root/bootstrap
+			// accounts remain compatible in the isolated integration dev instance.
+			if (this.manafieldSessionService.enabled) {
+				const linked = await this.db.query(
+					'SELECT 1 FROM "manafield_identity_link" WHERE "providerId" = $1 AND "userId" = $2 LIMIT 1',
+					['manafield-account', user.id],
+				) as unknown[];
+				if (linked.length !== 0) {
+					throw new AuthenticationError('linked account requires revocable browser session');
+				}
+			}
 			return [user, null];
 		} else {
 			const accessToken = await this.accessTokensRepository.findOne({
@@ -89,6 +111,18 @@ export class AuthenticateService implements OnApplicationShutdown {
 				return [user, accessToken];
 			}
 		}
+	}
+
+	/**
+	 * Only for the existing-account linking flow, which requires proof of
+	 * previously held native credentials. This deliberately cannot be used by
+	 * normal API or WebSocket authentication in integration mode.
+	 */
+	public async authenticateNativeForLink(token: string): Promise<MiLocalUser | null> {
+		if (!isNativeUserToken(token)) return null;
+		const user = await this.usersRepository.findOneBy({ token }) as MiLocalUser | null;
+		if (!user || user.host !== null || user.isSuspended || user.isDeleted) return null;
+		return user;
 	}
 
 	@bindThis
