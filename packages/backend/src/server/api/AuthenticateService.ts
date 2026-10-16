@@ -4,7 +4,6 @@
  */
 
 import { Inject, Injectable, OnApplicationShutdown } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { AccessTokensRepository, AppsRepository, UsersRepository } from '@/models/_.js';
 import type { MiLocalUser } from '@/models/User.js';
@@ -31,9 +30,6 @@ export class AuthenticateService implements OnApplicationShutdown {
 		@Inject(DI.usersRepository)
 		private usersRepository: UsersRepository,
 
-		@Inject(DI.db)
-		private db: DataSource,
-
 		@Inject(DI.accessTokensRepository)
 		private accessTokensRepository: AccessTokensRepository,
 
@@ -58,23 +54,17 @@ export class AuthenticateService implements OnApplicationShutdown {
 			return [user, null];
 		}
 		if (isNativeUserToken(token)) {
+			// No shared per-account token may act as a browser credential once
+			// Manafield device sessions are enabled, including bootstrap admins.
+			// This keeps logouts meaningful even for legacy authenticated clients.
+			if (this.manafieldSessionService.enabled) {
+				throw new AuthenticationError('legacy native token cannot authenticate integrated API');
+			}
 			const user = await this.cacheService.localUserByNativeTokenCache.fetch(token,
 				() => this.usersRepository.findOneBy({ token }) as Promise<MiLocalUser | null>);
 
 			if (user == null) {
 				throw new AuthenticationError('user not found');
-			}
-			// Never let a legacy shared native token bypass device-session revocation
-			// for users already linked to Manafield. Unlinked local root/bootstrap
-			// accounts remain compatible in the isolated integration dev instance.
-			if (this.manafieldSessionService.enabled) {
-				const linked = await this.db.query(
-					'SELECT 1 FROM "manafield_identity_link" WHERE "providerId" = $1 AND "userId" = $2 LIMIT 1',
-					['manafield-account', user.id],
-				) as unknown[];
-				if (linked.length !== 0) {
-					throw new AuthenticationError('linked account requires revocable browser session');
-				}
 			}
 			return [user, null];
 		} else {
