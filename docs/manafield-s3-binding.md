@@ -97,11 +97,16 @@ credentials/gateway enforcement exist.
 5. Review the admin settings UI: S3 values are managed externally and cannot
    be edited through the admin API in managed mode.
 
-**Current status:** library/binding code and validation tests; not a live
-service deployment. Direct CLI staging can prepare Redis and managed configuration, but creates
-its own Compose project and is not approved to augment the live Jenkins deployment. Jenkins S3 releases are still
-explicitly rejected until separately implemented. Never reset the live DB,
-remove a live bucket, or rotate existing keys as part of this adapter work.
+**Current status:** binding code and isolated Redis runtime checks passed; native
+service connection remains to be verified. Jenkins is the recommended runner,
+while shared CLI build, Resource staging and selected apply also work without
+Jenkins. Both execution paths share Resource binding/secret-file materialization.
+The inventory-aware `deploy/noctemblith-native-connect.py` recipe in the
+Manafield repository augments the existing project, preserves live Core/Account
+images and PG data, and starts native Noctemblith internally. It does not publish
+the public route. SSO browser flow and real media upload/download/delete still
+require E2E validation before cutover. Never reset the live DB, remove a live
+bucket, or rotate existing keys as part of this adapter work.
 
 
 ### 공개 도메인 활성화 후 임시 객체 전송 검증 (명시적 실행만 허용)
@@ -142,3 +147,12 @@ Bindings. It does not need or rewrite the legacy `.config/default.yml`,
 and does not silently fall back to its old standalone DB/Redis/S3 settings.
 An operator must still stage the public ingress route separately before
 turning on federation and production accounts.
+
+## 빌드·배포 실행기 원칙 (2026-10-19)
+
+권장 자동화 경로는 Jenkins지만, Jenkins 없이도 동일한 공통 CLI로 빌드·
+Resource 준비·선택 적용을 실행할 수 있어야 한다. 현재 Docker backend와
+Jenkins 실행기 선택은 별개다. 마나필드 저장소의 ADR-0006과 Redis
+WORK_HANDOFF가 공통 명령 및 기존 프로젝트 연결 절차를 설명한다.
+본체 내부 기동·Resource 등록 검증과 공개 전환·브라우저 SSO·미디어 E2E는
+별도 완료 조건으로 기록한다.
