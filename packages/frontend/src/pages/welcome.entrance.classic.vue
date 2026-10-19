@@ -100,7 +100,7 @@ misskeyApiGet('federation/instances', {
 		top: 100px;
 		left: 50%;
 		width: min(120vw, 580px);
-		transform: translate(-25%, 0);
+		transform: translate(-50%, 0);
 	}
 }
 
@@ -153,6 +153,8 @@ misskeyApiGet('federation/instances', {
 }
 
 .contents {
+	--MI-local-welcome-panel-bg: color-mix(in srgb, var(--MI_THEME-panel) 78%, transparent);
+
 	position: relative;
 	z-index: 1;
 	width: min(400px, calc(100% - 32px));

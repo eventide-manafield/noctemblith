@@ -121,7 +121,7 @@ function showMenu(ev: PointerEvent) {
 
 .panel {
 	position: relative;
-	background: var(--MI_THEME-panel);
+	background: var(--MI-local-welcome-panel-bg, var(--MI_THEME-panel));
 	border-radius: var(--MI-radius);
 	box-shadow: 0 12px 32px rgb(0 0 0 / 25%);
 }
