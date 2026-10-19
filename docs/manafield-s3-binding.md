@@ -2,7 +2,7 @@
 
 Noctemblith already uploads/deletes through the AWS S3 SDK. The Manafield
 integration changes **where the S3 configuration comes from**, not the upload
-protocol. The Module manifest explicitly requires two different Capabilities:
+protocol. The Module manifest explicitly requires three different Capabilities:
 
 - `state`: `database.postgresql@^1.0.0` (required; MySQL is **not** supported)
 - `media`: `storage.object@^1.0.0` (S3-compatible storage, R2 first)
@@ -29,18 +29,25 @@ resources:
       # REQUIRED for Noctemblith media URLs (use your actual public domain):
       publicBaseUrl: https://media.example.test
 
+  - id: noctemblith-redis
+    provider: redis
+    exclusiveTo:
+      module: noctemblith
+      slot: cache
+
 modules:
   - id: noctemblith
     # source / build / exposure configured by the Instance administrator
     bindings:
       state: manafield-postgres
       media: manafield-r2
+      cache: noctemblith-redis
 ```
 
 The executor injects `MANAFIELD_BINDING_STATE_*` PostgreSQL,
 `MANAFIELD_BINDING_MEDIA_*` S3 storage and `MANAFIELD_BINDING_CACHE_*`
 Redis cache settings, including private password file paths. In managed mode Noctemblith
-**fails closed** if either declared binding is incomplete; standalone mode
+**fails closed** if any declared binding is incomplete; standalone mode
 retains its existing YAML and DB-backed object-storage setup.
 
 S3 binding fields consumed by Noctemblith:
@@ -83,16 +90,16 @@ credentials/gateway enforcement exist.
    probe. Do not put secrets on the command line or into logs.
 2. Validate that `publicBaseUrl` actually responds to public GET requests for
    a disposable test object (only with permission to create such an object).
-3. Build and boot a disposable Noctemblith environment using both bindings.
-   The Instance needs a PostgreSQL schema with required privileges, Redis, a
-   mounted Misskey `.config/default.yml`, and suitable writable temporary paths.
+3. Build and boot a disposable Noctemblith environment using all three bindings.
+   The Instance needs a PostgreSQL schema with required privileges, the exclusive Redis Resource,
+   and suitable writable temporary paths. Managed mode does not mount legacy YAML.
 4. Exercise actual image upload, download and delete with **test** files only.
 5. Review the admin settings UI: S3 values are managed externally and cannot
    be edited through the admin API in managed mode.
 
 **Current status:** library/binding code and validation tests; not a live
-service deployment. The existing Manafield CLI v0 alone does not provision
-Noctemblith Redis/Instance configuration. Jenkins S3 releases are still
+service deployment. Direct CLI staging can prepare Redis and managed configuration, but creates
+its own Compose project and is not approved to augment the live Jenkins deployment. Jenkins S3 releases are still
 explicitly rejected until separately implemented. Never reset the live DB,
 remove a live bucket, or rotate existing keys as part of this adapter work.
 
@@ -125,8 +132,9 @@ sudo node \
 
 A Manafield-managed Noctemblith also requires a bound `cache.redis` Resource.
 Redis serves application queues, cache and pub/sub on the Manafield modules
-network, with a private password mounted as a read-only file. The Redis key
-prefix keeps trusted Module keys separate but is **not** Redis ACL isolation.
+network, with a private password mounted as a read-only file. The Resource must declare
+`exclusiveTo: { module: noctemblith, slot: cache }`; other consumers are rejected
+before credential allocation. A key prefix is namespacing, **not** Redis ACL isolation.
 
 In managed mode the backend uses an immutable runtime configuration derived
 from `MANAFIELD_MODULE_PUBLIC_URL`, `PORT` and the three explicit Resource
