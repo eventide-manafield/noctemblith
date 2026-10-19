@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h } from 'vue';
 import type { App, Component } from 'vue';
 import Dashboard from '../../src/components/MkVisitorDashboard.vue';
@@ -54,12 +54,16 @@ function mount(component: Component) {
 	window.document.body.appendChild(element);
 	const app = createApp(component);
 	app.config.globalProperties.$style = new Proxy({}, { get: (_, key) => String(key) });
-	app.component('MkA', { setup: (_, { slots }) => () => h('a', slots.default?.()) });
+	app.component('MkA', defineComponent({ setup: (_, { slots }) => () => h('a', slots.default?.()) }));
 	app.component('MkLoading', { setup: () => () => h('span', { 'data-loading': '' }) });
 	app.mount(element);
 	mounted.push({ app, element });
 	return element;
 }
+
+beforeEach(() => {
+	vi.mocked(window.fetch).mockClear();
+});
 
 afterEach(() => {
 	for (const { app, element } of mounted.splice(0)) {
