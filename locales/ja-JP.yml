@@ -2628,6 +2628,7 @@ _widgets:
   _userList:
     chooseList: "リストを選択"
   clicker: "クリッカー"
+  externalModule: "外部モジュール"
   birthdayFollowings: "もうすぐ誕生日のユーザー"
   chat: "ダイレクトメッセージ"
 
@@ -2663,6 +2664,10 @@ _widgetOptions:
     url: "RSSフィードのURL"
     refreshIntervalSec: "更新間隔(秒)"
     maxEntries: "最大表示件数"
+  _externalModule:
+    url: "モジュールのURL（HTTPS）"
+    setupHint: "URLを設定すると、この場所に外部モジュールを表示します。"
+    openInNewTab: "新しいタブで開く"
   _rssTicker:
     shuffle: "表示順をシャッフル"
     duration: "ティッカーのスクロール速度(秒)"
