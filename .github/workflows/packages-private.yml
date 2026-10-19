@@ -36,7 +36,6 @@ jobs:
           - diagnostics-shared
           - diagnostics-backend
           - diagnostics-frontend
-          - changelog-checker
     steps:
       - uses: actions/checkout@v7.0.1
         with:

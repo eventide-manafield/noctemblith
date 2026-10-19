@@ -9,7 +9,6 @@
 | [`diagnostics-shared`](./diagnostics-shared) | 計測系パッケージが共有する統計・書式整形・V8 heap snapshot解析のユーティリティ |
 | [`diagnostics-backend`](./diagnostics-backend) | バックエンドのメモリ使用量をbase/headで比較し、PRコメント用のMarkdownを生成する |
 | [`diagnostics-frontend`](./diagnostics-frontend) | フロントエンドをブラウザで起動した際のメトリクスと生成されたchunk情報等をbase/headで比較する |
-| [`changelog-checker`](./changelog-checker) | `CHANGELOG.md` の追記内容を検証する |
 
 ## GitHub Actionsからの呼び出し方
 

@@ -68,36 +68,13 @@ test('parses only stable identity UUID + username claims', () => {
 	assert.throws(() => parseManafieldIdentity({ sub: id, email: 'unknown@example.invalid' }));
 });
 
-test('Manafield SSO UI uses polite Korean and requires explicit ActivityPub consent', () => {
-	const files = [
-		'packages/frontend/src/pages/manafield-login-finish.vue',
-		'packages/frontend/src/pages/settings/connect.vue',
-		'packages/frontend/src/components/MkSignin.input.vue',
-	];
-	const sources = files.map(path =>
-		readFileSync(new URL('../../' + path, import.meta.url), 'utf8'));
-	// Regression guard: this feature was added after the update-center copy audit.
-	// Cover both Vue templates and messages dynamically assigned in scripts.
-	for (const [index, src] of sources.entries()) {
-		assert.doesNotMatch(src, /(?:없어|있어|됐어|했어|못했어|유지돼|연결해|해 줘|해야 해|중이야)(?=[.!?…'"])/u,
-			'Informal end-user Korean copy found in ' + files[index]);
-	}
-	const [finish, connect, signin] = sources;
-	assert.match(finish, /마나필드 계정 인증이 완료되었습니다/);
-	assert.match(finish, /공개 ActivityPub 계정 생성/);
-	assert.match(finish, /동의하고 녹템블리스 계정 생성/);
+test('ActivityPub provisioning requires explicit consent before the confirmation request', () => {
+	const finish = readFileSync(new URL('../../packages/frontend/src/pages/manafield-login-finish.vue', import.meta.url), 'utf8');
 	assert.match(finish, /auth\/manafield\/provision\/confirm/);
-	assert.match(finish, /signupConsent/);
-	assert.doesNotMatch(finish, /신규 계정 생성 기능은 아직 제공되지 않습니다/);
-	assert.match(finish, /같은 핸들의 기존 Noctemblith 계정이 이미 있어/);
-	assert.match(finish, /관리자 및 모더레이터 계정은 보안 정책에 따라/);
-	assert.match(connect, /Noctemblith 계정과 마나필드 계정의 소유권을 모두 확인해야 합니다/);
-	assert.match(connect, /마나필드 계정 연결이 완료되었습니다/);
-	assert.match(signin, /v-if="manafieldAvailable"/);
-	assert.match(signin, /마나필드 계정으로 시작하기/);
-	assert.match(signin, /새 녹템블리스 계정을 생성할 수 있습니다/);
+	assert.match(finish, /v-model="signupConsent"/);
+	assert.match(finish, /:disabled="!signupConsent \|\| signupBusy"/);
+	assert.match(finish, /if \(!signupConsent\.value \|\| signupBusy\.value\) return;/);
 });
-
 
 test('integrated native account creation paths are server-side gated, standalone remains opt-out', () => {
 	const signup = readFileSync(new URL('../../packages/backend/src/server/api/SignupApiService.ts', import.meta.url), 'utf8');

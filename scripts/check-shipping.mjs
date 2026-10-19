@@ -36,7 +36,7 @@ const LINT_TARGETS = [
 		root: `packages/${name}`,
 		pattern: new RegExp(`^packages/${name}/.*\\.(js|jsx|ts|tsx)$`),
 	})),
-	...['changelog-checker', 'diagnostics-backend', 'diagnostics-frontend', 'diagnostics-shared'].map((name) => ({
+	...['diagnostics-backend', 'diagnostics-frontend', 'diagnostics-shared'].map((name) => ({
 		root: `packages-private/${name}`,
 		pattern: new RegExp(`^packages-private/${name}/.*\\.(js|jsx|ts|tsx)$`),
 	})),
