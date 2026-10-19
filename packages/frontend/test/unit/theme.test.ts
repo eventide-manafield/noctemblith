@@ -100,6 +100,36 @@ describe('ThemeManager', () => {
 		window.localStorage.clear();
 	});
 
+	test.each(['light', 'dark'] as const)('entrance colors inherit defaults and accept independent overrides (%s)', async (base) => {
+		const { themeManager } = await loadThemeModule();
+		const theme: Theme = {
+			id: `entrance-${base}`,
+			name: 'Entrance',
+			author: 'tester',
+			base,
+			props: { accent: '#224488' },
+		};
+		themeManager.updateTheme(theme);
+		const original = { ...themeManager.currentCompiledTheme };
+		for (const key of ['entranceBg', 'entranceContrast', 'entranceSunset']) {
+			assert.ok(original[key]);
+			assert.strictEqual(document.documentElement.style.getPropertyValue(`--MI_THEME-${key}`), original[key]);
+		}
+		assert.strictEqual(original.entranceBg, original.bg);
+
+		themeManager.previewTheme({
+			...theme,
+			props: { ...theme.props, entranceBg: '#332244', entranceContrast: '#335577', entranceSunset: '#bb6633' },
+		});
+		for (const key of ['entranceBg', 'entranceContrast', 'entranceSunset']) {
+			assert.notStrictEqual(themeManager.currentCompiledTheme?.[key], original[key]);
+			assert.strictEqual(document.documentElement.style.getPropertyValue(`--MI_THEME-${key}`), themeManager.currentCompiledTheme?.[key]);
+		}
+		for (const key of ['accent', 'bg', 'fg', 'buttonBg', 'link', 'warn']) {
+			assert.strictEqual(themeManager.currentCompiledTheme?.[key], original[key]);
+		}
+	});
+
 	test('通常テーマ適用後のプレビューは現在テーマのみを切り替え、キャッシュは保持する', async () => {
 		const { themeManager, isPreviewMode } = await loadThemeModule();
 

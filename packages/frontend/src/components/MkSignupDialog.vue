@@ -11,10 +11,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 	@close="onClose"
 	@closed="emit('closed')"
 >
-	<template #header>{{ i18n.ts.signup }}</template>
+	<template #header>{{ registrationMode === 'manafield' ? i18n.tsx.signinWith({ x: 'Manafield' }) : i18n.ts.signup }}</template>
 
 	<div style="overflow-x: clip;">
 		<Transition
+			v-if="registrationMode === 'native'"
 			mode="out-in"
 			:enterActiveClass="$style.transition_x_enterActive"
 			:leaveActiveClass="$style.transition_x_leaveActive"
@@ -28,6 +29,14 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<XSignup :autoSet="autoSet" @signup="onSignup" @signupEmailPending="onSignupEmailPending"/>
 			</template>
 		</Transition>
+		<div v-else-if="registrationMode === 'manafield'" :class="$style.status">
+			<MkButton full rounded primary type="a" href="/auth/manafield/login/start" data-testid="manafield-signin">{{ i18n.tsx.signinWith({ x: 'Manafield' }) }}</MkButton>
+		</div>
+		<div v-else-if="registrationMode === 'error'" class="_gaps_m" :class="$style.status">
+			<MkInfo warn>{{ i18n.ts.somethingHappened }}</MkInfo>
+			<MkButton full rounded @click="refreshRegistrationMode">{{ i18n.ts.retry }}</MkButton>
+		</div>
+		<MkLoading v-else :class="$style.status"/>
 	</div>
 </MkModalWindow>
 </template>
@@ -38,6 +47,9 @@ import * as Misskey from 'misskey-js';
 import XSignup from '@/components/MkSignupDialog.form.vue';
 import XServerRules from '@/components/MkSignupDialog.rules.vue';
 import MkModalWindow from '@/components/MkModalWindow.vue';
+import MkButton from '@/components/MkButton.vue';
+import MkInfo from '@/components/MkInfo.vue';
+import { useManafieldRegistration } from '@/utility/use-manafield-registration.js';
 import { i18n } from '@/i18n.js';
 
 const props = withDefaults(defineProps<{
@@ -53,6 +65,7 @@ const emit = defineEmits<{
 }>();
 
 const dialog = useTemplateRef('dialog');
+const { registrationMode, refreshRegistrationMode } = useManafieldRegistration();
 
 const isAcceptedServerRule = ref(false);
 
@@ -72,6 +85,10 @@ function onSignupEmailPending() {
 </script>
 
 <style lang="scss" module>
+.status {
+	padding: 24px;
+}
+
 .transition_x_enterActive,
 .transition_x_leaveActive {
 	transition: opacity 0.3s cubic-bezier(0,0,.35,1), transform 0.3s cubic-bezier(0,0,.35,1);

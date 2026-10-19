@@ -7,7 +7,7 @@
  */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { ManafieldIdentityLink1792000000004 } from '../migration/1792000000004-ManafieldIdentityLink.js';
+import { NoctemblithBaseline1792170000000 } from '../migration/1792170000000-NoctemblithBaseline.js';
 
 const containerId = process.env.PG_SERVICE_CONTAINER_ID;
 if (typeof containerId !== 'string' || !/^[a-f0-9]{12,64}$/.test(containerId)) {
@@ -18,8 +18,8 @@ function sql(query) {
 	return execFileSync('docker', [
 		'exec', '-i', containerId, 'psql',
 		'-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1',
-		'-U', 'noct_test', '-d', 'noct_test', '-c', query,
-	], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+		'-U', 'noct_test', '-d', 'noct_test',
+	], { input: query, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
 }
 
 function mustReject(statement, explanation) {
@@ -31,11 +31,16 @@ function mustReject(statement, explanation) {
 	assert.fail(explanation);
 }
 
-const migration = new ManafieldIdentityLink1792000000004();
-const runner = { query: async statement => sql(statement) };
-sql('CREATE TABLE "user" ("id" varchar(32) PRIMARY KEY, "host" varchar(128) NULL)');
-sql("INSERT INTO \"user\" (\"id\", \"host\") VALUES ('local_one', NULL), ('local_two', NULL), ('remote_actor', 'remote.example')");
+const migration = new NoctemblithBaseline1792170000000();
+const runner = {
+	connection: { options: { schema: 'public' } },
+	query: async statement => sql(statement),
+};
 await migration.up(runner);
+sql(`INSERT INTO "user" ("id", "username", "usernameLower", "host") VALUES
+ ('local_one', 'local_one', 'local_one', NULL),
+ ('local_two', 'local_two', 'local_two', NULL),
+ ('remote_actor', 'remote_actor', 'remote_actor', 'remote.example')`);
 
 const one = '00000000-0000-4000-8000-000000000001';
 const two = '00000000-0000-4000-8000-000000000002';
@@ -60,6 +65,4 @@ mustReject(`UPDATE "manafield_identity_link" SET "subjectUuid"='${two}'
 
 sql("DELETE FROM \"user\" WHERE \"id\"='local_one'");
 assert.equal(sql('SELECT count(*) FROM "manafield_identity_link"'), '0', 'deleted user link was not removed');
-await migration.down(runner);
-assert.equal(sql("SELECT to_regclass('public.manafield_identity_link') IS NULL"), 't', 'down migration did not drop table');
-console.log('Manafield UUID mapping migration: all disposable PostgreSQL checks passed');
+console.log('Manafield UUID mapping baseline: all disposable PostgreSQL checks passed');

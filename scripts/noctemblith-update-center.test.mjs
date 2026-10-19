@@ -148,7 +148,6 @@ test('UI buttons are real controls but do not grant Docker or host execution pri
 	const workflow = readFileSync(new URL('../.github/workflows/docker.yml', import.meta.url), 'utf8');
 
 	for (const callback of ['@click="requestGuide"', '@click="skip"', '@click="snooze"']) assert.ok(ui.includes(callback));
-	assert.ok(ui.includes('수동 배포'));
 	assert.ok(nav.includes('NoctemblithUpdatePanel'));
 	assert.ok(router.includes('/noctemblith-updates'));
 	assert.ok(docker.includes('NOCTEMBLITH_BUILD_SHA'));
@@ -169,16 +168,6 @@ test('stamped image build metadata is strict JSON and is never cached by the app
 	const server = readFileSync(new URL('../packages/backend/src/server/web/ClientServerService.ts', import.meta.url), 'utf8');
 	assert.match(server, /reply\.header\('Cache-Control', 'no-store'\)/);
 	assert.match(server, /reply\.sendFile\('\/noctemblith-build\.json', this\.staticAssets, \{ cacheControl: false \}\)/);
-});
-
-test('update center Korean copy uses polite user-facing language', () => {
-	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctemblithUpdatePanel.vue', import.meta.url), 'utf8');
-	const messages = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/noctemblith-updates.ts', import.meta.url), 'utf8');
-	for (const source of [panel, messages]) {
-		assert.doesNotMatch(source, /(?:중이야|준비되었어|할 수 있어|확인해줘|교체해줘|찾지 못했어|사용 중이야|가져오지 못했어|변경하지 않아|사용해야 해|정보를 확인할 수 없어)/);
-	}
-	assert.match(panel, /업데이트 정보를 확인하는 중입니다/);
-	assert.match(messages, /빌드 정보를 확인할 수 없습니다/);
 });
 
 test('release subscription is default, development requires explicit selection', async () => {
@@ -202,26 +191,25 @@ test('release subscription is default, development requires explicit selection',
 	}
 });
 
-test('server-level subscription and dev warning are wired in UI and backend', () => {
+test('server subscription and development-channel consent are wired in UI and backend', () => {
 	const panel = readFileSync(new URL('../packages/frontend/src/studio/manafield/eventide/NoctemblithUpdatePanel.vue', import.meta.url), 'utf8');
 	const meta = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/meta.ts', import.meta.url), 'utf8');
 	const update = readFileSync(new URL('../packages/backend/src/server/api/endpoints/admin/update-meta.ts', import.meta.url), 'utf8');
 	const entity = readFileSync(new URL('../packages/backend/src/models/Meta.ts', import.meta.url), 'utf8');
-	const migration = readFileSync(new URL('../packages/backend/migration/1792000000000-NoctemblithUpdateSubscription.js', import.meta.url), 'utf8');
+	const migration = readFileSync(new URL('../packages/backend/migration/initial-baseline.sql', import.meta.url), 'utf8');
 	assert.match(panel, /misskeyApi\('admin\/meta'\)/);
 	assert.match(panel, /misskeyApi\('admin\/update-meta'/);
 	assert.match(panel, /v-model="showDev"/);
 	assert.match(panel, /status\.value\.candidate\.channel === DEV_CHANNEL/);
 	assert.match(panel, /:disabled="!devRiskAccepted"/);
-	assert.match(panel, /개발 버전의 안정성과 이전 버전으로의 복구는 보장되지 않습니다/);
 	assert.match(meta, /noctemblithUpdateChannel: instance\.noctemblithUpdateChannel/);
 	assert.match(update, /set\.noctemblithUpdateChannel = ps\.noctemblithUpdateChannel/);
 	assert.match(entity, /default: 'noctemblith\/release\/latest'/);
-	assert.match(migration, /ALTER TABLE.*noctemblithUpdateChannel.*character varying/);
+	assert.match(migration, /"noctemblithUpdateChannel"\s+character varying\(64\)\s+DEFAULT \'noctemblith\/release\/latest\'/);
 	assert.doesNotMatch(panel, /docker\.sock|child_process|execSync|spawn\(/);
 });
 
-test('Noctemblith endpoints and metadata do not expose the retired name', () => {
+test('update routes and build metadata are wired into the server and image', () => {
 	const web = readFileSync(new URL('../packages/backend/src/server/web/ClientServerService.ts', import.meta.url), 'utf8');
 	assert.match(web, /fastify\.get\('\/noctemblith-build\.json'/);
 	const docker = readFileSync(new URL('../Dockerfile', import.meta.url), 'utf8');

@@ -10,6 +10,8 @@ import { DI } from '@/di-symbols.js';
 import { MiMeta } from '@/models/Meta.js';
 import { GlobalEventService } from '@/core/GlobalEventService.js';
 import { bindThis } from '@/decorators.js';
+import { applyManafieldObjectStorageMetadata, manafieldManagedStorageMetaKeys } from '@/misc/manafield-object-storage-binding.js';
+import type { Config } from '@/config.js';
 import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import { FeaturedService } from '@/core/FeaturedService.js';
 import type { OnApplicationShutdown } from '@nestjs/common';
@@ -20,6 +22,9 @@ export class MetaService implements OnApplicationShutdown {
 	private intervalId: NodeJS.Timeout;
 
 	constructor(
+		@Inject(DI.config)
+		private config: Config,
+
 		@Inject(DI.redisForSub)
 		private redisForSub: Redis.Redis,
 
@@ -55,6 +60,7 @@ export class MetaService implements OnApplicationShutdown {
 						...(body.after),
 						rootUser: null, // joinなカラムは通常取ってこないので
 					};
+					applyManafieldObjectStorageMetadata(this.cache, this.config.objectStorageBinding);
 					break;
 				}
 				default:
@@ -78,8 +84,8 @@ export class MetaService implements OnApplicationShutdown {
 			const meta = metas[0];
 
 			if (meta) {
-				this.cache = meta;
-				return meta;
+				this.cache = applyManafieldObjectStorageMetadata(meta, this.config.objectStorageBinding);
+				return this.cache;
 			} else {
 				// metaが空のときfetchMetaが同時に呼ばれるとここが同時に呼ばれてしまうことがあるのでフェイルセーフなupsertを使う
 				const saved = await transactionalEntityManager
@@ -92,14 +98,17 @@ export class MetaService implements OnApplicationShutdown {
 					)
 					.then((x) => transactionalEntityManager.findOneByOrFail(MiMeta, x.identifiers[0]));
 
-				this.cache = saved;
-				return saved;
+				this.cache = applyManafieldObjectStorageMetadata(saved, this.config.objectStorageBinding);
+				return this.cache;
 			}
 		});
 	}
 
 	@bindThis
 	public async update(data: Partial<MiMeta>): Promise<MiMeta> {
+		if (this.config.objectStorageBinding && manafieldManagedStorageMetaKeys.some(key => data[key] !== undefined)) {
+			throw new Error('Object storage settings are owned by Manafield Resource Binding');
+		}
 		let before: MiMeta | undefined;
 
 		const updated = await this.db.transaction(async transactionalEntityManager => {
@@ -146,7 +155,7 @@ export class MetaService implements OnApplicationShutdown {
 
 		this.globalEventService.publishInternalEvent('metaUpdated', { before, after: updated });
 
-		return updated;
+		return applyManafieldObjectStorageMetadata(updated, this.config.objectStorageBinding);
 	}
 
 	@bindThis

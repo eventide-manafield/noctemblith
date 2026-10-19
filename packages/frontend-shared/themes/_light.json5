@@ -14,6 +14,10 @@
 		love: '#dd2e44',
 		focus: ':alpha<0.3<@accent',
 		bg: '#fff',
+		// Welcome-page artwork colors; independent of controls and status colors.
+		entranceBg: '@bg',
+		entranceContrast: '#000',
+		entranceSunset: '#FF9D4D',
 		fg: '#5f5f5f',
 		fgHighlighted: ':darken<3<@fg',
 		fgOnAccent: '#fff',

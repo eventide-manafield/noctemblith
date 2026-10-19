@@ -1,0 +1,39 @@
+{
+  "id": "noctemblith",
+  "name": "Noctemblith Social",
+  "description": "Manafield-native Noctemblith social backend: PostgreSQL state, S3 media and Redis cache are required.",
+  "version": "0.0.1",
+  "healthOperation": "health",
+  "requires": {
+    "capabilities": {
+      "state": {
+        "id": "database.postgresql",
+        "version": "^1.0.0"
+      },
+      "media": {
+        "id": "storage.object",
+        "version": "^1.0.0"
+      },
+      "cache": {
+        "id": "cache.redis",
+        "version": "^1.0.0"
+      }
+    }
+  },
+  "operations": [
+    {
+      "id": "health",
+      "description": "Checks the existing Noctemblith server readiness, including PostgreSQL and Redis.",
+      "input": null,
+      "output": null,
+      "binding": {
+        "type": "http",
+        "method": "GET",
+        "path": "/healthz",
+        "codecs": [
+          "json"
+        ]
+      }
+    }
+  ]
+}

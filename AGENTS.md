@@ -110,3 +110,14 @@ This Noctemblith fork's Korean product copy addresses **end users and server adm
 - This fork starts from a fresh database and does not support in-place upgrades from its retired pre-release schema. Preserve upstream Misskey migrations; the Noctemblith update column is created directly by a new Noctemblith migration. Never run the revised chain on an existing fork database without an explicit reset.
 - Do not alter active DNS, Traefik dynamic config or deploy either stack on source merge; operator approval and cutover checks are required.
 - Repo renaming is performed by the repository owner after validated code is pushed; GHCR package publishing is a separately managed namespace.
+
+## Automated test scope — owner decision, 2026-10-19
+
+- Automated pass/fail checks cover functional behavior, runtime/build wiring, data integrity, and authentication/security contracts.
+- Do not gate changes on contrast ratios, exact theme colors, artwork hashes or drawing primitives, prose wording, or polite/informal language matching.
+- Appearance, readability, and copy are reviewed through the user experience. Deliberately faint or hidden text and custom CSS must not fail automated checks solely for those design choices.
+- Preserve tests of theme/instance overrides, asset integrity and declared metadata, actionable controls, explicit consent, authorization, and data preservation.
+- Protocol identifiers, API error codes, parsers, and user-input validation are functional contracts; this decision does not remove those tests.
+- The Korean product-copy writing guidance above still applies when authoring UI, without regex-based wording tests.
+- Do not require CHANGELOG entries or run Storybook/Chromatic visual-regression CI in this fork. The changelog checker package and those workflows are retired.
+- Storybook may still be used locally for manual UI review; retained upstream Chromatic references do not authorize restoring automated visual gates or publishing snapshots.

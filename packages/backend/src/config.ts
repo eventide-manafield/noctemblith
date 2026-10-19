@@ -12,6 +12,9 @@ import type * as SentryVue from '@sentry/vue';
 import type { RedisOptions as IoRedisRedisOptions } from 'ioredis';
 import type { RedisOptions as BullMqRedisOptions } from 'bullmq';
 import type { AccessLogConfiguration, LogFormat, LogLevelSetting } from './logging/types.js';
+import { readManafieldDatabaseBinding } from './misc/manafield-database-binding.js';
+import { readManafieldRedisBinding } from './misc/manafield-redis-binding.js';
+import { readManafieldObjectStorageBinding, type ManafieldObjectStorageBinding } from './misc/manafield-object-storage-binding.js';
 
 type RedisOptionsRequiredFields = {
 	host: string;
@@ -47,6 +50,7 @@ type Source = {
 		db?: string;
 		user?: string;
 		pass?: string;
+		schema?: string;
 		disableCache?: boolean;
 		extra?: { [x: string]: string };
 	};
@@ -132,6 +136,8 @@ type Source = {
 };
 
 export type Config = {
+	/** Managed S3 Resource (private credentials remain in mounted files). */
+	objectStorageBinding: ManafieldObjectStorageBinding | null;
 	url: string;
 	port: number;
 	socket: string | undefined;
@@ -145,6 +151,7 @@ export type Config = {
 		db: string;
 		user: string;
 		pass: string;
+		schema?: string;
 		disableCache?: boolean;
 		extra?: { [x: string]: string };
 	};
@@ -260,7 +267,8 @@ export const compiledConfigFilePath = fs.existsSync(compiledConfigFilePathForTes
 	: resolve(projectBuiltDir, '.config.json');
 
 export function loadConfig(): Config {
-	if (!fs.existsSync(compiledConfigFilePath)) {
+	const managed = process.env.MANAFIELD_MODULE_ID !== undefined || process.env.MANAFIELD_MANAGED === '1';
+	if (!managed && !fs.existsSync(compiledConfigFilePath)) {
 		throw new Error('Compiled configuration file not found. Try running \'pnpm compile-config\'.');
 	}
 
@@ -269,7 +277,10 @@ export function loadConfig(): Config {
 	const frontendManifestExists = fs.existsSync(resolve(projectBuiltDir, '_frontend_vite_/manifest.json'));
 	const frontendEmbedManifestExists = fs.existsSync(resolve(projectBuiltDir, '_frontend_embed_vite_/manifest.json'));
 
-	const config = JSON.parse(fs.readFileSync(compiledConfigFilePath, 'utf-8')) as Source;
+	// Manafield owns runtime configuration and explicit Resource Bindings. A
+	// managed Module must not depend on a legacy, mutable .config/default.yml.
+	const config = managed ? manaFieldManagedSource() :
+		JSON.parse(fs.readFileSync(compiledConfigFilePath, 'utf-8')) as Source;
 
 	const url = tryCreateUrl(config.url ?? process.env.MISSKEY_URL ?? '');
 	const version = meta.version;
@@ -278,17 +289,42 @@ export function loadConfig(): Config {
 	const scheme = url.protocol.replace(/:$/, '');
 	const wsScheme = scheme.replace('http', 'ws');
 
+	const managedDatabaseBinding = readManafieldDatabaseBinding();
+	const managedRedisBinding = readManafieldRedisBinding();
+	const objectStorageBinding = readManafieldObjectStorageBinding();
+	if (managedDatabaseBinding && config.dbReplications) {
+		throw new Error('Manafield managed PostgreSQL binding does not support independently configured database replicas');
+	}
 	const dbDb = config.db.db ?? process.env.DATABASE_DB ?? '';
 	const dbUser = config.db.user ?? process.env.DATABASE_USER ?? '';
 	const dbPass = config.db.pass ?? process.env.DATABASE_PASSWORD ?? '';
+	// The setting is optional for standalone deployments: otherwise PostgreSQL's
+	// configured search_path determines the default schema.
+	const dbSchema = managedDatabaseBinding?.schema ?? config.db.schema;
+	if (dbSchema !== undefined && !/^[a-z_][a-z0-9_]{0,62}$/.test(dbSchema)) {
+		throw new Error('Invalid PostgreSQL schema: expected lowercase identifier (max 63 characters)');
+	}
+	// pg protocol startup option applies to ALL SQL, including raw queries and
+	// trigger functions. TypeORM's schema option alone is not enough for those.
+	const dbExtra = dbSchema ? {
+		...config.db.extra,
+		options: [config.db.extra?.options, `-csearch_path=${dbSchema}`].filter(Boolean).join(' '),
+	} : config.db.extra;
 
 	const externalMediaProxy = config.mediaProxy ?
 		config.mediaProxy.endsWith('/') ? config.mediaProxy.substring(0, config.mediaProxy.length - 1) : config.mediaProxy
 		: null;
 	const internalMediaProxy = `${scheme}://${host}/proxy`;
-	const redis = convertRedisOptions(config.redis, host);
+	const managedRedis = managedRedisBinding ? {
+		host: managedRedisBinding.host,
+		port: managedRedisBinding.port,
+		pass: managedRedisBinding.pass,
+		prefix: managedRedisBinding.redisPrefix,
+	} : config.redis;
+	const redis = convertRedisOptions(managedRedis, host);
 
 	return {
+		objectStorageBinding,
 		version,
 		publishTarballInsteadOfProvideRepositoryUrl: !!config.publishTarballInsteadOfProvideRepositoryUrl,
 		setupPassword: config.setupPassword,
@@ -314,16 +350,25 @@ export function loadConfig(): Config {
 		apiUrl: `${scheme}://${host}/api`,
 		authUrl: `${scheme}://${host}/auth`,
 		driveUrl: `${scheme}://${host}/files`,
-		db: { ...config.db, db: dbDb, user: dbUser, pass: dbPass },
+		db: managedDatabaseBinding ? {
+			host: managedDatabaseBinding.host,
+			port: managedDatabaseBinding.port,
+			db: managedDatabaseBinding.db,
+			user: managedDatabaseBinding.user,
+			pass: managedDatabaseBinding.pass,
+			schema: dbSchema,
+			extra: dbExtra,
+			disableCache: config.db.disableCache,
+		} : { ...config.db, db: dbDb, user: dbUser, pass: dbPass, schema: dbSchema, extra: dbExtra },
 		dbReplications: config.dbReplications,
 		dbSlaves: config.dbSlaves,
 		fulltextSearch: config.fulltextSearch,
 		meilisearch: config.meilisearch,
 		redis,
-		redisForPubsub: config.redisForPubsub ? convertRedisOptions(config.redisForPubsub, host) : redis,
-		redisForJobQueue: config.redisForJobQueue ? convertRedisOptions(config.redisForJobQueue, host) : redis,
-		redisForTimelines: config.redisForTimelines ? convertRedisOptions(config.redisForTimelines, host) : redis,
-		redisForReactions: config.redisForReactions ? convertRedisOptions(config.redisForReactions, host) : redis,
+		redisForPubsub: !managedRedisBinding && config.redisForPubsub ? convertRedisOptions(config.redisForPubsub, host) : redis,
+		redisForJobQueue: !managedRedisBinding && config.redisForJobQueue ? convertRedisOptions(config.redisForJobQueue, host) : redis,
+		redisForTimelines: !managedRedisBinding && config.redisForTimelines ? convertRedisOptions(config.redisForTimelines, host) : redis,
+		redisForReactions: !managedRedisBinding && config.redisForReactions ? convertRedisOptions(config.redisForReactions, host) : redis,
 		sentryForBackend: config.sentryForBackend,
 		sentryForFrontend: config.sentryForFrontend,
 		id: config.id,
@@ -358,6 +403,40 @@ export function loadConfig(): Config {
 		deactivateAntennaThreshold: config.deactivateAntennaThreshold ?? (1000 * 60 * 60 * 24 * 7),
 		pidFile: config.pidFile,
 		logging: config.logging,
+	};
+}
+
+/** Build a minimal runtime configuration from Manafield deployment metadata.
+ * All actual database, Redis and S3 connection data comes from required
+ * Resource Bindings; this function intentionally holds NO connection secrets.
+ */
+function manaFieldManagedSource(): Source {
+	const origin = process.env.MANAFIELD_MODULE_PUBLIC_URL;
+	if (!origin) throw new Error('Manafield managed Noctemblith requires MANAFIELD_MODULE_PUBLIC_URL');
+	let parsed: URL;
+	try {
+		parsed = new URL(origin);
+	} catch {
+		throw new Error('Invalid Manafield Module public URL');
+	}
+	if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.pathname !== '/' ||
+		parsed.username || parsed.password || parsed.search || parsed.hash) {
+		throw new Error('Manafield Module public URL must be a root HTTPS origin');
+	}
+	const port = Number(process.env.PORT ?? '8080');
+	if (!Number.isSafeInteger(port) || port < 1 || port > 65535) {
+		throw new Error('Invalid Manafield Module HTTP port');
+	}
+	return {
+		url: parsed.origin,
+		port,
+		// New clean installation: no legacy Noctemblith account ID format/data.
+		id: 'aid',
+		pidFile: '/tmp/noctemblith.pid',
+		clusterLimit: 1,
+		db: { host: 'unbound', port: 5432 },
+		redis: { host: 'unbound', port: 6379, pass: '' },
+		fulltextSearch: { provider: 'sqlLike' },
 	};
 }
 

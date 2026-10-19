@@ -8,6 +8,8 @@
 		accent: '#7A35B6',
 		accentedBg: ':alpha<0.16<@accent',
 		bg: '#17131F',
+		entranceBg: '#241736',
+		entranceContrast: '#F7F4EF',
 		fg: '#F2ECFA',
 		fgHighlighted: '#FFFFFF',
 		fgOnAccent: '#FFFFFF',
