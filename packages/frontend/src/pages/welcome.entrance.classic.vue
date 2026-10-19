@@ -11,7 +11,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	<div :class="$style.shape2"></div>
 	<div :class="$style.logoWrapper">
 		<div :class="$style.poweredBy">Powered by</div>
-		<img :src="misskeysvg" :class="$style.misskey"/>
+		<div :class="$style.brand"><img src="/static-assets/noctemblith.svg" alt="" :class="$style.brandIcon"/><span>Noctemblith</span></div>
 	</div>
 	<div :class="$style.contents">
 		<MkVisitorDashboard/>
@@ -34,7 +34,6 @@ import * as Misskey from 'misskey-js';
 import XTimeline from './welcome.timeline.vue';
 import MkMarqueeText from '@/components/MkMarqueeText.vue';
 import MkFeaturedPhotos from '@/components/MkFeaturedPhotos.vue';
-import misskeysvg from '/client-assets/misskey.svg';
 import { misskeyApiGet } from '@/utility/misskey-api.js';
 import MkVisitorDashboard from '@/components/MkVisitorDashboard.vue';
 import { getProxiedImageUrl } from '@/utility/media-proxy.js';
@@ -130,12 +129,17 @@ misskeyApiGet('federation/instances', {
 	margin-bottom: 2px;
 }
 
-.misskey {
-	width: 120px;
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: bold;
+}
 
-	@media (max-width: 450px) {
-		width: 100px;
-	}
+.brandIcon {
+	width: 40px;
+	height: 40px;
+	object-fit: contain;
 }
 
 .contents {

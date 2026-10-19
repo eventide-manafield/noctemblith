@@ -18,15 +18,23 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<!-- eslint-disable-next-line vue/no-v-html -->
 				<div v-html="instance.description || i18n.ts.headlineMisskey"></div>
 			</div>
-			<div v-if="instance.disableRegistration || instance.federation !== 'all'" :class="$style.mainWarn" class="_gaps_s">
-				<MkInfo v-if="instance.disableRegistration" warn>{{ i18n.ts.invitationRequiredToRegister }}</MkInfo>
+			<div v-if="(registrationMode === 'native' && instance.disableRegistration) || instance.federation !== 'all'" :class="$style.mainWarn" class="_gaps_s">
+				<MkInfo v-if="registrationMode === 'native' && instance.disableRegistration" warn>{{ i18n.ts.invitationRequiredToRegister }}</MkInfo>
 				<MkInfo v-if="instance.federation === 'specified'" warn>{{ i18n.ts.federationSpecified }}</MkInfo>
 				<MkInfo v-else-if="instance.federation === 'none'" warn>{{ i18n.ts.federationDisabled }}</MkInfo>
 			</div>
 			<div class="_gaps_s" :class="$style.mainActions">
-				<MkButton :class="$style.mainAction" full rounded gradate data-testid="signup" style="margin-right: 12px;" @click="signup()">{{ i18n.ts.joinThisServer }}</MkButton>
-				<MkButton :class="$style.mainAction" full rounded type="a" target="_blank" rel="noopener" href="https://misskey-hub.net/servers/">{{ i18n.ts.exploreOtherServers }}</MkButton>
-				<MkButton :class="$style.mainAction" full rounded data-testid="signin" @click="signin()">{{ i18n.ts.login }}</MkButton>
+				<MkButton v-if="registrationMode === 'manafield'" :class="$style.mainAction" full rounded gradate type="a" href="/auth/manafield/login/start" data-testid="manafield-signin">{{ i18n.tsx.signinWith({ x: 'Manafield' }) }}</MkButton>
+				<template v-else-if="registrationMode === 'native'">
+					<MkButton :class="$style.mainAction" full rounded gradate data-testid="signup" style="margin-right: 12px;" @click="signup()">{{ i18n.ts.joinThisServer }}</MkButton>
+					<MkButton :class="$style.mainAction" full rounded type="a" target="_blank" rel="noopener" href="https://misskey-hub.net/servers/">{{ i18n.ts.exploreOtherServers }}</MkButton>
+					<MkButton :class="$style.mainAction" full rounded data-testid="signin" @click="signin()">{{ i18n.ts.login }}</MkButton>
+				</template>
+				<template v-else-if="registrationMode === 'error'">
+					<MkInfo warn>{{ i18n.ts.somethingHappened }}</MkInfo>
+					<MkButton full rounded @click="refreshRegistrationMode">{{ i18n.ts.retry }}</MkButton>
+				</template>
+				<MkLoading v-else/>
 			</div>
 		</div>
 	</div>
@@ -56,7 +64,6 @@ SPDX-License-Identifier: AGPL-3.0-only
 import { ref } from 'vue';
 import * as Misskey from 'misskey-js';
 import { instanceName } from '@@/js/config.js';
-import type { MenuItem } from '@/types/menu.js';
 import XSigninDialog from '@/components/MkSigninDialog.vue';
 import XSignupDialog from '@/components/MkSignupDialog.vue';
 import MkButton from '@/components/MkButton.vue';
@@ -69,6 +76,9 @@ import { instance } from '@/instance.js';
 import MkNumber from '@/components/MkNumber.vue';
 import XActiveUsersChart from '@/components/MkVisitorDashboard.ActiveUsersChart.vue';
 import { openInstanceMenu } from '@/ui/_common_/common.js';
+import { useManafieldRegistration } from '@/utility/use-manafield-registration.js';
+
+const { registrationMode, refreshRegistrationMode } = useManafieldRegistration();
 
 const stats = ref<Misskey.entities.StatsResponse | null>(null);
 
@@ -87,6 +97,7 @@ function signin() {
 }
 
 function signup() {
+	if (registrationMode.value !== 'native') return;
 	const { dispose } = os.popup(XSignupDialog, {
 		autoSet: true,
 	}, {

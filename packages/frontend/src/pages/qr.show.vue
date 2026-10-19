@@ -19,8 +19,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 				<div><MkCondensedLine :minScale="2 / 3">{{ acct }}</MkCondensedLine></div>
 			</div>
 		</div>
-		<img v-if="deviceMotionPermissionNeeded" v-flip :class="$style.logo" :src="misskeysvg" alt="Misskey Logo" @click="requestDeviceMotion"/>
-		<img v-else v-flip :class="$style.logo" :src="misskeysvg" alt="Misskey Logo"/>
+		<button v-if="deviceMotionPermissionNeeded" v-flip class="_button" :class="$style.logo" @click="requestDeviceMotion"><img src="/static-assets/noctemblith.svg" alt="Noctemblith"/></button>
+		<img v-else v-flip :class="$style.logo" src="/static-assets/noctemblith.svg" alt="Noctemblith"/>
 	</div>
 </div>
 </template>
@@ -34,7 +34,6 @@ import type { Directive } from 'vue';
 import { instance } from '@/instance.js';
 import { ensureSignin } from '@/i.js';
 import { userPage, userName } from '@/filters/user.js';
-import misskeysvg from '/client-assets/misskey.svg';
 import { getStaticImageUrl } from '@/utility/media-proxy.js';
 import { i18n } from '@/i18n.js';
 
@@ -215,6 +214,11 @@ $avatarSize: 58px;
 	width: 100px;
 	margin: $s3 auto 0;
 	filter: drop-shadow(0 0 6px #0007);
+
+	> img {
+		display: block;
+		width: 100%;
+	}
 }
 </style>
 
