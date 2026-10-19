@@ -134,7 +134,7 @@ function showMenu(ev: PointerEvent) {
 	width: 85px;
 	margin-top: -47px;
 	vertical-align: bottom;
-	filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+	filter: var(--MI-local-welcome-logo-filter, drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5)));
 }
 
 .mainMenu {
