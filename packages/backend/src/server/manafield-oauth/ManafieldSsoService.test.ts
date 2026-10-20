@@ -521,3 +521,13 @@ describe('Manafield browser-only logout route', () => {
   }
  });
 });
+
+it('refuses startup rather than allowing native fallback when integration OAuth is misconfigured', () => {
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', 'true');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN', '');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID', '');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL', '');
+ expect(() => new ManafieldSsoService({ url: ownOrigin } as any, {} as any,
+  {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any))
+  .toThrow('Manafield SSO enabled without a complete OAuth client registration');
+});

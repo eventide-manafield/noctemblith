@@ -14,6 +14,7 @@ import { SigninEntityService } from '@/core/entities/SigninEntityService.js';
 import { bindThis } from '@/decorators.js';
 import { EmailService } from '@/core/EmailService.js';
 import { NotificationService } from '@/core/NotificationService.js';
+import { FastifyReplyError } from '@/misc/fastify-reply-error.js';
 import { ManafieldSessionService } from '@/server/manafield-oauth/ManafieldSessionService.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
@@ -35,11 +36,25 @@ export class SigninService {
 	) {
 	}
 
+ public nativeLoginAllowed(localAdmin: boolean): boolean {
+  return this.manafieldSessionService.enabled ? localAdmin : !localAdmin;
+ }
+
 	@bindThis
-	public async signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser, centralGuard?: string) {
+	public async signin(request: FastifyRequest, reply: FastifyReply, user: MiLocalUser, centralGuard?: string, localAdmin = false) {
 		// Integrated browsers never receive the shared, non-revocable native user token.
-		const loginToken = this.manafieldSessionService.enabled
-			? await this.manafieldSessionService.issue(user.id, centralGuard) : user.token!;
+		let loginToken: string;
+		if (!this.manafieldSessionService.enabled) {
+			loginToken = user.token!;
+		} else if (localAdmin && centralGuard === undefined) {
+			try {
+				loginToken = await this.manafieldSessionService.issueLocalAdmin(user);
+			} catch {
+				throw new FastifyReplyError(403, 'Local administrator login is not permitted.');
+			}
+		} else {
+			loginToken = await this.manafieldSessionService.issue(user.id, centralGuard);
+		}
 		setImmediate(async () => {
 			this.notificationService.createNotification(user.id, 'login', {});
 

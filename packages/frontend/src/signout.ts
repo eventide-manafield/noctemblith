@@ -18,7 +18,7 @@ export async function signout() {
 	// Integrated browser tokens are individually revocable. Never delete the
 	// Account Core session when leaving Noctemblith. Standalone users retain
 	// the historical local-only sign-out behavior.
-	const sessionPattern = /^mfs1_[A-Za-z0-9_-]{43}$/;
+	const sessionPattern = /^(?:mfs1|nla1)_[A-Za-z0-9_-]{43}$/;
 	// The existing logout clears all locally saved accounts, so revoke every
 	// session token owned by this Noctemblith origin before clearing storage.
 	// Never send credentials belonging to another instance to this origin.

@@ -3582,3 +3582,14 @@ _qr:
   scanFile: "端末の画像をスキャン"
   raw: "テキスト"
   mfm: "MFM"
+
+
+_noctemblithLogin:
+  manafield: "Manafieldアカウントでログイン"
+  description: "このサーバーにはManafieldアカウントでログインします。"
+  localAdmin: "ローカル管理者ログイン"
+  localAdminDescription: "このサーバーの未連携ローカル管理者アカウントでログインします。"
+  unavailable: "ログイン設定を確認できませんでした。もう一度お試しください。"
+  localAdminUnavailable: "このサーバーではローカル管理者専用ログインを利用できません。"
+  privilegedUnavailable: "この権限を持つアカウントではManafieldログインを完了できません。サーバー管理者にお問い合わせください。"
+  unlinkedAccount: "同じハンドルの既存アカウントがあります。アカウントの所有権確認とManafieldへの連携について、サーバー管理者にお問い合わせください。"

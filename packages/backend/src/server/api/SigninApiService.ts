@@ -81,9 +81,18 @@ export class SigninApiService {
 			};
 		}>,
 		reply: FastifyReply,
+		localAdmin = false,
 	) {
 		reply.header('Access-Control-Allow-Origin', this.config.url);
 		reply.header('Access-Control-Allow-Credentials', 'true');
+
+		if (!this.signinService.nativeLoginAllowed(localAdmin)) {
+			return reply.code(localAdmin ? 404 : 403).send({ error: {
+				code: 'MANAFIELD_LOGIN_REQUIRED',
+				id: 'fdb0b575-d542-40c7-a2e6-1fc3436cf849',
+				message: 'Use Manafield account login.',
+			} });
+		}
 
 		const body = request.body;
 		const username = body['username'];
@@ -214,7 +223,7 @@ export class SigninApiService {
 			}
 
 			if (same) {
-				return this.signinService.signin(request, reply, user);
+				return this.signinService.signin(request, reply, user, undefined, localAdmin);
 			} else {
 				return await fail(403, {
 					id: '932c904e-9460-45b7-9ce6-7ed33be7eb2c',
@@ -237,7 +246,7 @@ export class SigninApiService {
 				});
 			}
 
-			return this.signinService.signin(request, reply, user);
+			return this.signinService.signin(request, reply, user, undefined, localAdmin);
 		} else if (body.credential) {
 			if (!same && !profile.usePasswordLessLogin) {
 				return await fail(403, {
@@ -248,7 +257,7 @@ export class SigninApiService {
 			const authorized = await this.webAuthnService.verifyAuthentication(user.id, body.credential);
 
 			if (authorized) {
-				return this.signinService.signin(request, reply, user);
+				return this.signinService.signin(request, reply, user, undefined, localAdmin);
 			} else {
 				return await fail(403, {
 					id: '93b86c4b-72f9-40eb-9815-798928603d1e',

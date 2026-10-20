@@ -30,6 +30,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
+import { i18n } from '@/i18n.js';
 import { login } from '@/accounts.js';
 import { isValidManafieldLoginToken } from '@/utility/manafield-login-token.js';
 import { definePage } from '@/page.js';
@@ -53,7 +54,7 @@ async function completeLogin(ticket: string): Promise<void> {
  if (!response.ok) {
   const error = await response.json().catch(() => null) as { error?: string } | null;
   if (error?.error === 'privileged_account_requires_local_login') {
-   message.value = '관리자 및 모더레이터 계정은 보안 정책에 따라 기존 Noctemblith 로그인 방식으로 로그인해야 합니다. 마나필드 계정 연결은 유지됩니다.';
+   message.value = i18n.ts._noctemblithLogin.privilegedUnavailable;
    return;
   }
   throw new Error('expired_or_invalid_ticket');
@@ -122,7 +123,7 @@ onMounted(async () => {
   message.value = status === 'handle-required'
    ? '녹템블리스 계정을 이용하려면 마나필드 공개 프로필 핸들을 먼저 등록해야 합니다.'
    : status === 'unlinked'
-   ? '같은 핸들의 기존 Noctemblith 계정이 이미 있어 신규 계정을 생성할 수 없습니다. 기존 계정으로 로그인한 뒤 설정 → 서비스 연동에서 두 계정의 소유권을 확인하고 연결해 주세요.'
+   ? i18n.ts._noctemblithLogin.unlinkedAccount
    : status === 'denied'
    ? '마나필드 인증이 취소되었습니다.'
    : '마나필드 로그인을 완료하지 못했습니다.';

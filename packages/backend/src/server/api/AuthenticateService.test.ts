@@ -44,3 +44,12 @@ describe('Noctemblith auth respects device session revocation', () => {
   expect(db.query).not.toHaveBeenCalled();
  });
 });
+
+it('resolves local admin sessions through the revocable store rather than app/native tokens', async () => {
+ const { service, sessions } = fixture(false, true);
+ const token = 'nla1_' + 'a'.repeat(43);
+ expect((await service.authenticate(token))[0]?.id).toBe('local-a');
+ expect(sessions.resolve).toHaveBeenCalledWith(token);
+ sessions.resolve.mockResolvedValueOnce(null as any);
+ await expect(service.authenticate(token)).rejects.toThrow(AuthenticationError);
+});

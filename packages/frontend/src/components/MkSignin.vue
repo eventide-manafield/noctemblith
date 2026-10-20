@@ -21,6 +21,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 			:message="message"
 			:openOnRemote="openOnRemote"
 			:initialUsername="initialUsername"
+			:localAdmin="localAdmin"
 
 			@usernameSubmitted="onUsernameSubmitted"
 			@passkeyClick="onPasskeyLogin"
@@ -80,6 +81,7 @@ import XInput from '@/components/MkSignin.input.vue';
 import XPassword from '@/components/MkSignin.password.vue';
 import XTotp from '@/components/MkSignin.totp.vue';
 import XPasskey from '@/components/MkSignin.passkey.vue';
+import { localAdminSignin } from '@/utility/local-admin-signin.js';
 import { login } from '@/accounts.js';
 
 const emit = defineEmits<{
@@ -87,11 +89,13 @@ const emit = defineEmits<{
 }>();
 
 const props = withDefaults(defineProps<{
+	localAdmin?: boolean;
 	autoSet?: boolean;
 	message?: string,
 	openOnRemote?: OpenOnRemoteOptions,
 	initialUsername?: string;
 }>(), {
+	localAdmin: false,
 	autoSet: false,
 	message: '',
 	openOnRemote: undefined,
@@ -116,7 +120,9 @@ function onPasskeyLogin(): void {
 	if (browserSupportsWebAuthn()) {
 		doingPasskeyFromInputPage.value = true;
 		waiting.value = true;
-		misskeyApi('signin-with-passkey', {})
+		(props.localAdmin
+			? localAdminSignin<Misskey.entities.SigninWithPasskeyInitResponse>('signin-with-passkey', {})
+			: misskeyApi('signin-with-passkey', {}))
 			.then((res) => {
 				passkeyContext.value = res.context ?? '';
 				credentialRequest.value = res.option;
@@ -132,10 +138,10 @@ function onPasskeyDone(credential: AuthenticationResponseJSON): void {
 	waiting.value = true;
 
 	if (doingPasskeyFromInputPage.value) {
-		misskeyApi('signin-with-passkey', {
-			credential: credential,
-			context: passkeyContext.value,
-		}).then((res) => {
+		const request = { credential, context: passkeyContext.value };
+		(props.localAdmin
+			? localAdminSignin<Misskey.entities.SigninWithPasskeyResponse>('signin-with-passkey', request)
+			: misskeyApi('signin-with-passkey', request)).then((res) => {
 			if (res.signinResponse == null) {
 				onSigninApiError();
 				return;
@@ -228,7 +234,9 @@ async function tryLogin(req: Partial<Misskey.entities.SigninFlowRequest>): Promi
 		throw new Error('Invalid request');
 	}
 
-	return await misskeyApi('signin-flow', _req).then(async (res) => {
+	return await (props.localAdmin
+		? localAdminSignin<Misskey.entities.SigninFlowResponse>('signin-flow', _req)
+		: misskeyApi('signin-flow', _req)).then(async (res) => {
 		if (res.finished) {
 			emit('login', res);
 			await onLoginSucceeded(res);
@@ -278,7 +286,7 @@ async function tryLogin(req: Partial<Misskey.entities.SigninFlowRequest>): Promi
 
 async function onLoginSucceeded(res: Misskey.entities.SigninFlowResponse & { finished: true }) {
 	if (props.autoSet) {
-		await login(res.i);
+		await login(res.i, props.localAdmin ? '/admin' : undefined);
 	}
 }
 
