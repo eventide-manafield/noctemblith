@@ -1,36 +1,48 @@
-# Noctemblith isolated development deployment
+# Noctemblith DEV — current deployment
 
-Status: CANDIDATE ONLY. Do not start or modify containers on source merge.
+Development origin: `https://noctemblith-dev.manafield.studio/`.
+Separate Compose project: `noctemblith-dev`; PostgreSQL 18 and Redis 7 remain
+on the internal `noctemblith_private` network. Only the application joins
+the shared `manafield-edge` network as alias `noctemblith-dev`.
 
-The new immutable ActivityPub origin is https://noctemblith-dev.manafield.studio/.
-The existing https://noctite-dev.manafield.studio/ must continue running unchanged.
-Do not change the origin of an existing federated instance in place.
+## Deployment files on the authorized host
 
-## Prerequisites
+All running Compose configuration and secrets live under:
 
-1. Merge code, then have the owner rename the GitHub repository to eventide-manafield/noctemblith.
-2. Create and verify branch noctemblith/dev at the reviewed commit. Manually trigger docker.yml on this new branch.
-3. Verify GHCR image digest ghcr.io/eventide-manafield/noctemblith@sha256:<digest>.
-4. Deploy from a SEPARATE folder. Set .config/default.yml with the NEW origin, database noctemblith on db, Redis redis, new admin setup password.
-5. Create a new private deploy/manafield/secrets/noctemblith-database-password. Do NOT reuse an old instance password.
-6. Prepare the external development-only network noctemblith-dev-modules, isolated from production.
-7. Check both Compose candidates: project noctemblith-dev, app service noctemblith, independent PostgreSQL/Redis/media volumes.
+`/opt/manafield/ai-workspace/deployments/noctemblith-dev/`
 
-## Operator verification
+Files: `docker-compose.yml`, `.config/default.yml`, `secrets/db-password`,
+`traefik.noctemblith-dev.yml`, `DEPLOY_README.md`.
 
-With NOCTEMBLITH_IMAGE set to the verified immutable GHCR digest, check:
+Do not echo, copy to Git, or transmit the setup password or database password.
+The Compose image is pinned to a verified immutable digest.
 
-    docker compose -f deploy/manafield/compose.noctemblith-dev.candidate.yml -f deploy/manafield/compose.noctemblith-dev-edge.candidate.yml config --quiet
+## Current staging sequence
 
-After explicit operator approval only, start the new development stack:
+1. After a new reviewed build, update the image digest in the *operator*
+   deployment directory's Compose file (not the reference template).
+2. Log in as an authorized member of the Docker group and run:
 
-    docker compose -f deploy/manafield/compose.noctemblith-dev.candidate.yml -f deploy/manafield/compose.noctemblith-dev-edge.candidate.yml up -d --pull always
+       cd /opt/manafield/ai-workspace/deployments/noctemblith-dev
+       docker compose config --quiet
+       docker compose up -d --pull always
+       docker compose ps
 
-Review and install traefik.noctemblith-dev.candidate.yml separately in Traefik's dynamic directory.
-Never replace the original Noctite ingress router or connect the old DB/media.
-Verify HTTPS, certificates, /healthz/, /noctemblith-build.json, new emoji asset and admin setup.
-At present DNS resolves for the new name but HTTP 404 is expected until new ingress/app is configured.
+3. Check the app, database and Redis are all `healthy`; migrations run at app
+   startup. A missing Docker secret or file permission must be fixed without
+   resetting the database.
+4. After all services are healthy, an administrator may install the new
+   Traefik route from `traefik.noctemblith-dev.yml` under its own separate
+   filename in `/home/nayuz/infra/traefik/dynamic/`.
+5. Verify HTTPS `/healthz/`, `/noctemblith-build.json`, the canonical
+   `noctemblith.svg` and built-in `:noctemblith:` emoji. Register the initial
+   admin only using the locally stored setup password.
 
-Do not use down -v. The old Noctite emoji seeder and PNG have been deleted from the new source.
-The historical, already-shipped Noctite migration is intentionally preserved. The fresh Noctemblith
-emoji uses its own Noctemblith bootstrap-state migration.
+Do not publish PostgreSQL/Redis ports, change an existing ActivityPub origin,
+or remove Docker volumes. Stop the app with `docker compose stop` if required.
+
+## Source compatibility policy
+
+Already-applied DB migration files are immutable. The new project evolves
+its own `noctemblithUpdateChannel` column using a separate rename migration
+instead of rewriting migration history. The web UI exposes only the new brand.

@@ -228,7 +228,7 @@ export const paramDef = {
 		remoteNotesCleaningExpiryDaysForEachNotes: { type: 'number' },
 		remoteNotesCleaningMaxProcessingDurationInMinutes: { type: 'number' },
 		showRoleBadgesOfRemoteUsers: { type: 'boolean' },
-		noctiteUpdateChannel: {
+		noctemblithUpdateChannel: {
 			type: 'string',
 			enum: ['noctemblith/release/latest', 'noctemblith/dev'],
 		},
@@ -792,8 +792,8 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 				set.remoteNotesCleaningMaxProcessingDurationInMinutes = ps.remoteNotesCleaningMaxProcessingDurationInMinutes;
 			}
 
-			if (ps.noctiteUpdateChannel !== undefined) {
-				set.noctiteUpdateChannel = ps.noctiteUpdateChannel;
+			if (ps.noctemblithUpdateChannel !== undefined) {
+				set.noctemblithUpdateChannel = ps.noctemblithUpdateChannel;
 			}
 
 			if (ps.showRoleBadgesOfRemoteUsers !== undefined) {

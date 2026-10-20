@@ -58,6 +58,7 @@ test('the new themes are built in, not forced onto personal or instance themes',
 	const builtin = read('packages/frontend-shared/js/theme.ts');
 	assert.match(builtin, /'d-noctemblith'/);
 	assert.match(builtin, /'l-noctemblith'/);
+	assert.doesNotMatch(builtin, /'l-noctite'|'d-noctite'/);
 
 	for (const path of [
 		'packages/frontend/src/boot/common.ts',

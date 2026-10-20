@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * SPDX-FileCopyrightText: Noctite contributors
+ * SPDX-FileCopyrightText: Noctemblith contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Read-only HTTP discovery checks. This is NOT a test of signed inbox
@@ -9,7 +9,7 @@
 
 const [originArg, usernameArg] = process.argv.slice(2);
 if (process.argv.length !== 4) {
-	console.error('Usage: node scripts/noctite-federation-smoke.mjs https://INSTANCE.EXAMPLE USERNAME');
+	console.error('Usage: node scripts/noctemblith-federation-smoke.mjs https://INSTANCE.EXAMPLE USERNAME');
 	process.exitCode = 2;
 } else {
 	await main(originArg, usernameArg).catch((error) => {
@@ -52,7 +52,7 @@ async function main(originArg, username) {
 	if (!link) throw new Error('WebFinger has no ActivityPub actor self link');
 	const actorUrl = new URL(link.href);
 	if (actorUrl.origin !== base || actorUrl.protocol !== 'https:') {
-		throw new Error('WebFinger actor URL is not on the Noctite origin');
+		throw new Error('WebFinger actor URL is not on the Noctemblith origin');
 	}
 	console.log('PASS WebFinger actor discovery');
 

@@ -293,12 +293,6 @@ export class ClientServerService {
 			return reply.sendFile('/noctemblith-build.json', this.staticAssets, { cacheControl: false });
 		});
 
-		fastify.get('/noctite-build.json', async (_request, reply) => {
-			// No API credentials or host secrets. Avoid stale metadata after deployment.
-			reply.header('Cache-Control', 'no-store');
-			return reply.sendFile('/noctite-build.json', this.staticAssets, { cacheControl: false });
-		});
-
 		fastify.get<{ Params: { path: string } }>('/fluent-emoji/:path(.*)', async (request, reply) => {
 			const path = request.params.path;
 

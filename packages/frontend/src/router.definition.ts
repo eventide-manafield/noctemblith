@@ -471,11 +471,6 @@ export const ROUTE_DEF = [{
 		name: 'noctemblithUpdates',
 		component: page(() => import('@/pages/admin/noctemblith-updates.vue')),
 	}, {
-		// Keep links bookmarked under the former application name working.
-		path: '/noctite-updates',
-		name: 'noctiteUpdatesLegacy',
-		component: page(() => import('@/pages/admin/noctemblith-updates.vue')),
-	}, {
 		path: '/moderation',
 		name: 'moderation',
 		component: page(() => import('@/pages/admin/moderation.vue')),

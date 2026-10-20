@@ -620,7 +620,7 @@ export const meta = {
 				type: 'boolean',
 				optional: false, nullable: false,
 			},
-			noctiteUpdateChannel: {
+			noctemblithUpdateChannel: {
 				type: 'string',
 				enum: ['noctemblith/release/latest', 'noctemblith/dev'],
 				optional: false, nullable: false,
@@ -651,7 +651,7 @@ export default class extends Endpoint<typeof meta, typeof paramDef> { // eslint-
 			const proxy = await this.systemAccountService.fetch('proxy');
 
 			return {
-				noctiteUpdateChannel: instance.noctiteUpdateChannel,
+				noctemblithUpdateChannel: instance.noctemblithUpdateChannel,
 				maintainerName: instance.maintainerName,
 				maintainerEmail: instance.maintainerEmail,
 				version: this.config.version,

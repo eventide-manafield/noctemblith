@@ -41,11 +41,10 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
 COPY --link . ./
 
 # Generated at image-build time, never from an untrusted browser-supplied SHA.
-# The runtime serves non-secret metadata at /noctemblith-build.json and legacy alias.
+# The runtime serves non-secret metadata at /noctemblith-build.json.
 ARG NOCTEMBLITH_BUILD_SHA=unknown
 ARG NOCTEMBLITH_UPDATE_CHANNEL=noctemblith/dev
-RUN printf '{"sha":"%s","channel":"%s"}' "$NOCTEMBLITH_BUILD_SHA" "$NOCTEMBLITH_UPDATE_CHANNEL" > packages/backend/assets/noctemblith-build.json \
-    && cp packages/backend/assets/noctemblith-build.json packages/backend/assets/noctite-build.json
+RUN printf '{"sha":"%s","channel":"%s"}' "$NOCTEMBLITH_BUILD_SHA" "$NOCTEMBLITH_UPDATE_CHANNEL" > packages/backend/assets/noctemblith-build.json
 
 RUN pnpm build
 RUN rm -rf .git/
@@ -113,7 +112,6 @@ COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/bui
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/i18n/built ./packages/i18n/built
 COPY --chown=misskey:misskey . ./
 # The final image must contain the exact metadata generated in native-builder.
-COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/assets/noctite-build.json ./packages/backend/assets/noctite-build.json
 COPY --chown=misskey:misskey --from=native-builder /misskey/packages/backend/assets/noctemblith-build.json ./packages/backend/assets/noctemblith-build.json
 
 ENV LD_PRELOAD=/usr/local/lib/libjemalloc.so
