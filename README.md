@@ -1,76 +1,14 @@
 <div align="center">
-  <img src="./packages/backend/assets/noctemblith.svg" width="170" alt="Noctemblith — purple crescent crystal with sunset light"/>
+  <img src="./packages/backend/assets/noctemblith.svg" width="170" alt="노을빛을 품은 보라색 초승달 결정, Noctemblith 로고"/>
   <h1>Noctemblith · 녹템블리스 (그믐석)</h1>
-  <p>A federated social platform based on Misskey, with its own independent identity.</p>
-  <p><a href="https://noctemblith.manafield.studio/">Noctemblith</a> · <a href="https://github.com/eventide-manafield/noctemblith">Source</a> · <a href="./docs/branding.md">Brand assets &amp; :noctemblith: emoji</a></p>
+  <p>Misskey를 기반으로 독자적인 정체성을 갖춘 연합형 소셜 플랫폼입니다.</p>
+  <p><a href="https://noctemblith.manafield.studio/">Noctemblith</a> · <a href="https://github.com/eventide-manafield/noctemblith">소스 코드</a> · <a href="./docs/README.md">문서</a> · <a href="./docs/branding.md">브랜드 자산과 :noctemblith: 이모지</a></p>
 </div>
 
-> **Noctemblith is a fork of [Misskey](https://github.com/misskey-dev/misskey)** (AGPL-3.0). The original project and contributors remain credited below. This renamed development branch provides a default `:noctemblith:` emoji for each new Noctemblith runtime; it does not modify any database until a revised image is deployed and started.
+> **Noctemblith는 [Misskey](https://github.com/misskey-dev/misskey)의 포크입니다.** [AGPL-3.0 라이선스](./LICENSE)를 따르며, 원본 프로젝트와 기여자에게 감사드립니다.
 
----
-
-## Upstream Misskey
-
-<div align="center">
-<a href="https://misskey-hub.net">
-	<img src="./assets/title_float.svg" alt="Misskey logo" style="border-radius:50%" width="300"/>
-</a>
-
-**🌎 **Misskey** is an open source, federated social media platform that's free forever! 🚀**
-
-[Learn more](https://misskey-hub.net/)
-
----
-
-<a href="https://misskey-hub.net/servers/">
-		<img src="https://custom-icon-badges.herokuapp.com/badge/find_an-instance-acea31?logoColor=acea31&style=for-the-badge&logo=misskey&labelColor=363B40" alt="find an instance"/></a>
-
-<a href="https://misskey-hub.net/docs/for-admin/install/guides/">
-		<img src="https://custom-icon-badges.herokuapp.com/badge/create_an-instance-FBD53C?logoColor=FBD53C&style=for-the-badge&logo=server&labelColor=363B40" alt="create an instance"/></a>
-
-<a href="./CONTRIBUTING.md">
-		<img src="https://custom-icon-badges.herokuapp.com/badge/become_a-contributor-A371F7?logoColor=A371F7&style=for-the-badge&logo=git-merge&labelColor=363B40" alt="become a contributor"/></a>
-
-<a href="https://discord.gg/Wp8gVStHW3">
-		<img src="https://custom-icon-badges.herokuapp.com/badge/join_the-community-5865F2?logoColor=5865F2&style=for-the-badge&logo=discord&labelColor=363B40" alt="join the community"/></a>
-
-<a href="https://www.patreon.com/syuilo">
-		<img src="https://custom-icon-badges.herokuapp.com/badge/become_a-patron-F96854?logoColor=F96854&style=for-the-badge&logo=patreon&labelColor=363B40" alt="become a patron"/></a>
-
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/misskey-dev/misskey)
-
-<a href="https://flatt.tech/oss/gmo/trampoline" target="_blank"><img src="https://flatt.tech/assets/images/badges/gmo-oss.svg" height="24px"/></a>
-
-</div>
-
-## Thanks
-
-<a href="https://sentry.io/"><img src="https://github.com/misskey-dev/misskey/assets/4439005/98576556-222f-467a-94be-e98dbda1d852" height="30" alt="Sentry" /></a>
-
-Thanks to [Sentry](https://sentry.io/) for providing the error tracking platform that helps us catch unexpected errors.
-
-<a href="https://www.chromatic.com/"><img src="https://user-images.githubusercontent.com/321738/84662277-e3db4f80-af1b-11ea-88f5-91d67a5e59f6.png" height="30" alt="Chromatic" /></a>
-
-Thanks to [Chromatic](https://www.chromatic.com/) for providing the visual testing platform that helps us review UI changes and catch visual regressions.
-
-<a href="https://about.codecov.io/for/open-source/"><img src="https://about.codecov.io/wp-content/themes/codecov/assets/brand/sentry-cobranding/logos/codecov-by-sentry-logo.svg" height="30" alt="Codecov" /></a>
-
-Thanks to [Codecov](https://about.codecov.io/for/open-source/) for providing the code coverage platform that helps us improve our test coverage.
-
-<a href="https://crowdin.com/"><img src="https://user-images.githubusercontent.com/20679825/230709597-1299a011-171a-4294-a91e-355a9b37c672.svg" height="30" alt="Crowdin" /></a>
-
-Thanks to [Crowdin](https://crowdin.com/) for providing the localization platform that helps us translate Misskey into many languages.
-
-<a href="https://hub.docker.com/"><img src="https://user-images.githubusercontent.com/20679825/230148221-f8e73a32-a49b-47c3-9029-9a15c3824f92.png" height="30" alt="Docker" /></a>
-
-Thanks to [Docker](https://hub.docker.com/) for providing the container platform that helps us run Misskey in production.
-
----
-
-<div align="center">
-	
-Support us with a ⭐ !
-
-[![Star History Chart](https://api.star-history.com/svg?repos=misskey-dev/misskey&type=Date)](https://star-history.com/#misskey-dev/misskey&Date)
-
-</div>
+<p align="center">
+  <a href="https://buymeacoffee.com/manafield">
+    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-Support_Manafield-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000" alt="Buy Me a Coffee로 후원하기"/>
+  </a>
+</p>
