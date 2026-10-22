@@ -141,6 +141,27 @@ export class ApiServerService {
 			};
 		}>('/signin-with-passkey', (request, reply) => this.signinWithPasskeyApiService.signin(request, reply));
 
+		fastify.post<{
+			Body: {
+				username: string;
+				password?: string;
+				token?: string;
+				credential?: AuthenticationResponseJSON;
+				'hcaptcha-response'?: string;
+				'g-recaptcha-response'?: string;
+				'turnstile-response'?: string;
+				'm-captcha-response'?: string;
+				'testcaptcha-response'?: string;
+			};
+		}>('/local-admin/signin-flow', (request, reply) => this.signinApiService.signin(request, reply, true));
+
+		fastify.post<{
+			Body: {
+				credential?: AuthenticationResponseJSON;
+				context?: string;
+			};
+		}>('/local-admin/signin-with-passkey', (request, reply) => this.signinWithPasskeyApiService.signin(request, reply, true));
+
 		fastify.post<{ Body: { code: string; } }>('/signup-pending', (request, reply) => this.signupApiService.signupPending(request, reply));
 
 		fastify.get('/v1/instance/peers', async (request, reply) => {

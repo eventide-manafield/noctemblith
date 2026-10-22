@@ -18,7 +18,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<p v-else>계정을 연결하려면 현재 Noctemblith 계정과 마나필드 계정의 소유권을 모두 확인해야 합니다.</p>
 					<p v-if="manafieldMessage" role="status">{{ manafieldMessage }}</p>
 					<a v-if="manafieldHandleRequired && manafieldProfileUrl" :href="manafieldProfileUrl">마나필드에서 공개 프로필 핸들 등록하기</a>
-					<MkButton v-if="!manafieldLinked" primary :disabled="manafieldBusy" @click="startManafieldLink">
+					<MkButton v-if="!manafieldLinked && manafieldLinkAllowed" primary :disabled="manafieldBusy" @click="startManafieldLink">
 						{{ manafieldBusy ? '연결 준비 중…' : '마나필드 계정 연결하기' }}
 					</MkButton>
 				</div>
@@ -93,6 +93,7 @@ import { $i } from '@/i.js';
 const isDesktop = ref(window.innerWidth >= 1100);
 const manafieldEnabled = ref(false);
 const manafieldLinked = ref(false);
+const manafieldLinkAllowed = ref(false);
 const manafieldBusy = ref(false);
 const manafieldMessage = ref('');
 const manafieldHandleRequired = ref(false);
@@ -115,8 +116,12 @@ async function getManafieldState() {
    body: '{}',
   });
   if (linked.ok) {
-   const result = await linked.json() as { linked?: boolean };
+   const result = await linked.json() as { linked?: boolean; linkAllowed?: boolean };
    manafieldLinked.value = result.linked === true;
+   manafieldLinkAllowed.value = result.linkAllowed === true;
+   if (!manafieldLinkAllowed.value && !manafieldLinked.value) {
+    manafieldMessage.value = '관리자·모더레이터 계정의 중앙 연결에는 추가 인증이 필요합니다. 현재 릴리스에서는 이 연결을 지원하지 않습니다.';
+   }
   }
   const feedback = new URL(window.location.href).searchParams.get('manafield');
   const messages: Record<string, string> = {

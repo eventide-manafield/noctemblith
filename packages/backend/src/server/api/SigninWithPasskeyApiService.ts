@@ -5,6 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import { Inject, Injectable } from '@nestjs/common';
+import { isSameOriginMutation } from '@/server/manafield-oauth/flow.js';
 import { IsNull } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type {
@@ -60,9 +61,22 @@ export class SigninWithPasskeyApiService {
 			};
 		}>,
 		reply: FastifyReply,
+		localAdmin = false,
 	) {
 		reply.header('Access-Control-Allow-Origin', this.config.url);
 		reply.header('Access-Control-Allow-Credentials', 'true');
+
+		if (localAdmin && !isSameOriginMutation(request.headers.origin, request.headers['sec-fetch-site'], this.config.url)) {
+			return reply.code(403).send({ error: { code: 'FORBIDDEN_ORIGIN' } });
+		}
+
+		if (!this.signinService.nativeLoginAllowed(localAdmin)) {
+			return reply.code(localAdmin ? 404 : 403).send({ error: {
+				code: 'MANAFIELD_LOGIN_REQUIRED',
+				id: 'fdb0b575-d542-40c7-a2e6-1fc3436cf849',
+				message: 'Use Manafield account login.',
+			} });
+		}
 
 		const body = request.body;
 		const credential = body['credential'];
@@ -171,7 +185,7 @@ export class SigninWithPasskeyApiService {
 			});
 		}
 
-		const signinResponse = await this.signinService.signin(request, reply, user);
+		const signinResponse = await this.signinService.signin(request, reply, user, undefined, localAdmin);
 		return {
 			signinResponse: signinResponse,
 		};

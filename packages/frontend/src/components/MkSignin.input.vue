@@ -16,7 +16,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</MkInfo>
 
 		<!-- 外部サーバーへの転送 -->
-		<div v-if="openOnRemote" class="_gaps_m">
+		<div v-if="mode === 'standalone' && openOnRemote" class="_gaps_m">
 			<div class="_gaps_s">
 				<MkButton type="button" rounded primary style="margin: 0 auto;" @click="openRemote(openOnRemote)">
 					{{ i18n.ts.continueOnRemote }} <i class="ti ti-external-link"></i>
@@ -31,38 +31,42 @@ SPDX-License-Identifier: AGPL-3.0-only
 		</div>
 
 		<!-- username入力 -->
-		<form class="_gaps_s" @submit.prevent="emit('usernameSubmitted', username)">
+		<form v-if="showNative" class="_gaps_s" @submit.prevent="emit('usernameSubmitted', username)">
 			<MkInput v-model="username" :placeholder="i18n.ts.username" type="text" pattern="^[a-zA-Z0-9_]+$" :spellcheck="false" autocomplete="username webauthn" autofocus required data-testid="signin-username">
+				{{ i18n.ts.username }}
 				<template #prefix>@</template>
 				<template #suffix>@{{ host }}</template>
 			</MkInput>
 			<MkButton type="submit" large primary rounded style="margin: 0 auto;" data-testid="signin-page-input-continue">{{ i18n.ts.continue }} <i class="ti ti-arrow-right"></i></MkButton>
 		</form>
 
-		<!-- Manafield Account SSO is only advertised when this instance opts in. -->
-		<div v-if="manafieldAvailable" class="_gaps_s">
-			<div :class="$style.orHr"><p :class="$style.orMsg">{{ i18n.ts.or }}</p></div>
+		<div v-if="mode === 'integrated' && !localAdmin" class="_gaps_s">
 			<MkButton type="button" rounded large primary style="margin: 0 auto;" @click="goToManafieldLogin">
-				마나필드 계정으로 시작하기
+				{{ i18n.ts._noctemblithLogin.manafield }}
 			</MkButton>
-			<p>마나필드 계정으로 로그인하거나 새 녹템블리스 계정을 생성할 수 있습니다.</p>
+			<p>{{ i18n.ts._noctemblithLogin.description }}</p>
 		</div>
 
-		<!-- パスワードレスログイン -->
-		<div :class="$style.orHr">
-			<p :class="$style.orMsg">{{ i18n.ts.or }}</p>
+		<template v-if="showNative">
+			<div :class="$style.orHr"><p :class="$style.orMsg">{{ i18n.ts.or }}</p></div>
+			<div>
+				<MkButton type="button" style="margin: auto auto;" large rounded primary gradate @click="emit('passkeyClick', $event)">
+					<i class="ti ti-device-usb" style="font-size: medium;"></i>{{ i18n.ts.signinWithPasskey }}
+				</MkButton>
+			</div>
+		</template>
+		<MkLoading v-if="mode === 'loading'"/>
+		<div v-if="mode === 'error'" role="status" class="_gaps_s">
+			<p>{{ i18n.ts._noctemblithLogin.unavailable }}</p>
+			<MkButton type="button" @click="loadMode">{{ i18n.ts.retry }}</MkButton>
 		</div>
-		<div>
-			<MkButton type="submit" style="margin: auto auto;" large rounded primary gradate @click="emit('passkeyClick', $event)">
-				<i class="ti ti-device-usb" style="font-size: medium;"></i>{{ i18n.ts.signinWithPasskey }}
-			</MkButton>
-		</div>
+		<p v-if="mode === 'standalone' && localAdmin" role="status">{{ i18n.ts._noctemblithLogin.localAdminUnavailable }}</p>
 	</div>
 </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { toUnicode } from 'punycode.js';
 
 import { query, extractDomain } from '@@/js/url.js';
@@ -76,10 +80,12 @@ import MkInput from '@/components/MkInput.vue';
 import MkInfo from '@/components/MkInfo.vue';
 
 const props = withDefaults(defineProps<{
+	localAdmin?: boolean;
 	message?: string,
 	openOnRemote?: OpenOnRemoteOptions,
 	initialUsername?: string;
 }>(), {
+	localAdmin: false,
 	message: '',
 	openOnRemote: undefined,
 	initialUsername: undefined,
@@ -93,17 +99,24 @@ const emit = defineEmits<{
 const host = toUnicode(configHost);
 
 const username = ref(props.initialUsername ?? '');
-const manafieldAvailable = ref(false);
-onMounted(async () => {
+const mode = ref<'loading' | 'standalone' | 'integrated' | 'error'>('loading');
+const showNative = computed(() => props.localAdmin ? mode.value === 'integrated' : mode.value === 'standalone');
+
+async function loadMode(): Promise<void> {
+	mode.value = 'loading';
 	try {
-		const response = await window.fetch('/auth/manafield/status', { cache: 'no-store' });
-		if (!response.ok) return;
-		const data = await response.json() as { enabled?: boolean };
-		manafieldAvailable.value = data.enabled === true;
+		const response = await window.fetch('/auth/manafield/status', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+		if (!response.ok) throw new Error('Login settings unavailable');
+		const data = await response.json() as { enabled?: unknown };
+		if (typeof data.enabled !== 'boolean') throw new Error('Invalid login settings');
+		mode.value = data.enabled ? 'integrated' : 'standalone';
 	} catch {
-		// Non-Manafield instances must retain normal local login.
+		// An integration outage must never expose an ordinary native-login fallback.
+		mode.value = 'error';
 	}
-});
+}
+
+onMounted(loadMode);
 
 function goToManafieldLogin(): void {
 	window.location.assign('/auth/manafield/login/start');

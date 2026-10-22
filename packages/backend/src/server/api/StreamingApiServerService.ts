@@ -94,6 +94,9 @@ export class StreamingApiServerService {
 				token: app,
 			}, contextId);
 			const stream = await this.moduleRef.create(MainStreamConnection, contextId);
+			if (typeof token === 'string' && isManafieldBrowserSessionToken(token)) {
+				stream.setSessionValidator(async () => await this.manafieldSessionService.resolve(token) !== null);
+			}
 
 			await stream.init();
 

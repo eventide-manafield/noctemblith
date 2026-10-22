@@ -10,6 +10,6 @@
  */
 export function isValidManafieldLoginToken(value: unknown): value is string {
  return typeof value === 'string' && (
-  value.length === 16 || /^mfs1_[A-Za-z0-9_-]{43}$/.test(value)
+  value.length === 16 || /^(?:mfs1|nla1)_[A-Za-z0-9_-]{43}$/.test(value)
  );
 }

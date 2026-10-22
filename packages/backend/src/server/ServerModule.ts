@@ -30,6 +30,7 @@ import { UrlPreviewService } from './web/UrlPreviewService.js';
 import { ClientLoggerService } from './web/ClientLoggerService.js';
 import { OAuth2ProviderService } from './oauth/OAuth2ProviderService.js';
 import { ManafieldSsoService } from './manafield-oauth/ManafieldSsoService.js';
+import { ManafieldLocalAdminPolicyService } from './manafield-oauth/ManafieldLocalAdminPolicyService.js';
 import { ManafieldSessionService } from './manafield-oauth/ManafieldSessionService.js';
 
 import MainStreamConnection from '@/server/api/stream/Connection.js';
@@ -106,6 +107,7 @@ import { SigninWithPasskeyApiService } from './api/SigninWithPasskeyApiService.j
 		OAuth2ProviderService,
 		ManafieldSsoService,
 		ManafieldSessionService,
+		ManafieldLocalAdminPolicyService,
 	],
 	exports: [
 		ServerService,

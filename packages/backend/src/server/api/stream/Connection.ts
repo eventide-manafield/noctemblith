@@ -56,6 +56,23 @@ export default class Connection {
 	public token?: MiAccessToken;
 	private wsConnection: WebSocket.WebSocket;
 	private messageQueue = promiseLimit<void>(1);
+	private outboundQueue = promiseLimit<void>(1);
+	private sessionValidator?: () => Promise<boolean>;
+	private pendingOutbound = 0;
+	private pendingInbound = 0;
+
+	public setSessionValidator(validate: () => Promise<boolean>): void {
+		this.sessionValidator = validate;
+	}
+
+	private async sessionAllowed(): Promise<boolean> {
+		if (!this.sessionValidator) return true;
+		try {
+			if (await this.sessionValidator()) return true;
+		} catch { /* Central or local validation failures never become a native fallback. */ }
+		this.wsConnection.close(4001, 'Session ended');
+		return false;
+	}
 	public subscriber: StreamEventEmitter;
 	private channels: Map<string, Channel> = new Map();
 	private subscribingNotes: Map<string, number> = new Map();
@@ -130,7 +147,16 @@ export default class Connection {
 		this.subscriber = subscriber;
 
 		this.wsConnection = wsConnection;
-		this.wsConnection.on('message', data => this.messageQueue(() => this.onWsConnectionMessage(data)));
+		this.wsConnection.on('message', data => {
+			if (!this.sessionValidator) { void this.messageQueue(() => this.onWsConnectionMessage(data)); return; }
+			const bytes = Array.isArray(data) ? data.reduce((n, b) => n + b.byteLength, 0) : data.byteLength;
+			if (bytes > 64 * 1024) { this.wsConnection.close(1009, 'Stream message too large'); return; }
+			if (this.pendingInbound >= 64) { this.wsConnection.close(1013, 'Stream backlog'); return; }
+			this.pendingInbound++;
+			void this.messageQueue(async () => {
+				try { await this.onWsConnectionMessage(data); } finally { this.pendingInbound--; }
+			}).catch(() => this.wsConnection.close(4001, 'Session validation unavailable'));
+		});
 
 		this.subscriber.on('broadcast', data => {
 			this.onBroadcastMessage(data);
@@ -142,7 +168,7 @@ export default class Connection {
 	 */
 	@bindThis
 	private async onWsConnectionMessage(data: WebSocket.RawData) {
-		if (this.wsConnection.readyState !== WebSocket.WebSocket.OPEN) return;
+		if (this.wsConnection.readyState !== WebSocket.WebSocket.OPEN || !await this.sessionAllowed()) return;
 
 		let obj: JsonObject;
 
@@ -282,10 +308,17 @@ export default class Connection {
 	 */
 	@bindThis
 	public sendMessageToWs(type: string, payload: JsonObject) {
-		this.wsConnection.send(JSON.stringify({
-			type: type,
-			body: payload,
-		}));
+		const send = () => this.wsConnection.send(JSON.stringify({ type, body: payload }));
+		if (!this.sessionValidator) { send(); return; }
+		// Central validation precedes protected output as well as incoming actions.
+		// Bound the queue rather than retaining an unbounded backlog during outages.
+		if (this.pendingOutbound >= 256) { this.wsConnection.close(1013, 'Stream backlog'); return; }
+		this.pendingOutbound++;
+		void this.outboundQueue(async () => {
+			try {
+				if (this.wsConnection.readyState === WebSocket.WebSocket.OPEN && await this.sessionAllowed()) send();
+			} finally { this.pendingOutbound--; }
+		}).catch(() => this.wsConnection.close(4001, 'Session validation unavailable'));
 	}
 
 	/**

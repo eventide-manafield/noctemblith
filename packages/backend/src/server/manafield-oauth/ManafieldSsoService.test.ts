@@ -3,7 +3,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import Fastify from 'fastify';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createHmac, randomBytes } from 'node:crypto';
+const secretDir = mkdtempSync(join(tmpdir(), 'noctemblith-backchannel-test-'));
+const secretFile = join(secretDir, 'secret');
+const testSecret = 'test-only-backchannel-secret-32-bytes-minimum';
+writeFileSync(secretFile, testSecret, { mode: 0o600 });
+afterAll(() => rmSync(secretDir, { recursive: true, force: true }));
 import { ManafieldSsoService } from './ManafieldSsoService.js';
 
 const ownOrigin = 'https://noctemblith-dev.manafield.studio';
@@ -20,6 +29,7 @@ function cookieFromHeader(header: string | string[] | undefined, name: string): 
 
 function createMockService() {
  vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', 'true');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_BACKCHANNEL_SECRET_FILE', secretFile);
  vi.stubEnv('NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN', 'https://manafield.studio');
  vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID', 'manafield-noctemblith-dev');
  vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL', ownOrigin + '/auth/manafield/callback');
@@ -96,7 +106,7 @@ function createMockService() {
   }),
  };
 
- const sessions = { enabled: true, revoke: vi.fn(async () => true) };
+ const sessions = { enabled: true, revoke: vi.fn(async () => true), resolve: vi.fn(async () => user), revokeByGuardHash: vi.fn(async () => 1) };
  const service = new ManafieldSsoService(config as any, redis as any, db as any,
   repository as any, auth as any, role as any, signin as any, signup as any, sessions as any);
  const app = Fastify();
@@ -115,6 +125,11 @@ function stubIssuer(identity: { sub: string; preferred_username: string; profile
   if (pathname === '/account/oauth/userinfo') {
    return new Response(JSON.stringify({ sub: identity.sub, preferred_username: identity.preferred_username }),
     { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  if (pathname === '/account/oauth/session-guard') {
+   return new Response(JSON.stringify({ session_guard: 'g'.repeat(43) }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+   });
   }
   if (pathname === '/account/oauth/profile-handle') {
    const handle = Object.hasOwn(identity, 'profile_handle') ? identity.profile_handle : identity.preferred_username;
@@ -141,7 +156,7 @@ describe('Manafield dev SSO existing-account ownership', () => {
   service.registerRoutes(app);
   try {
    const status = await app.inject({ method: 'GET', url: '/auth/manafield/status' });
-   expect(status.json()).toEqual({ enabled: false });
+   expect(status.json()).toEqual({ enabled: false, accountProfileUrl: null });
    expect((await app.inject({ method: 'GET', url: '/auth/manafield/login/start' })).statusCode).toBe(503);
   } finally { await app.close(); }
  });
@@ -515,4 +530,77 @@ describe('Manafield browser-only logout route', () => {
    await app.close();
   }
  });
+});
+
+it('refuses startup rather than allowing native fallback when integration OAuth is misconfigured', () => {
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_SSO_ENABLED', 'true');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_BACKCHANNEL_SECRET_FILE', secretFile);
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_ACCOUNT_ORIGIN', '');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CLIENT_ID', '');
+ vi.stubEnv('NOCTEMBLITH_MANAFIELD_OAUTH_CALLBACK_URL', '');
+ expect(() => new ManafieldSsoService({ url: ownOrigin } as any, {} as any,
+  {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any))
+  .toThrow('Manafield SSO enabled without a complete OAuth client registration');
+});
+
+describe('Authenticated central logout backchannel', () => {
+ function proof(guardHash = 'a'.repeat(64)) {
+  const payload = { audience: 'manafield-noctemblith-dev', guardHash,
+   issuedAt: Math.floor(Date.now() / 1000), nonce: randomBytes(16).toString('base64url') };
+  const sign = (body: typeof payload) => createHmac('sha256', testSecret)
+   .update(`${body.audience}\n${body.guardHash}\n${body.issuedAt}\n${body.nonce}`).digest('base64url');
+  return { payload, sign };
+ }
+
+ it('accepts an audience-bound signed cleanup and rejects replay', async () => {
+  const { app, sessions } = createMockService();
+  try {
+   const { payload, sign } = proof();
+   const request = { method: 'POST' as const, url: '/auth/manafield/backchannel/logout',
+    payload, headers: { 'x-manafield-signature': sign(payload) } };
+   expect((await app.inject(request)).statusCode).toBe(204);
+   expect(sessions.revokeByGuardHash).toHaveBeenCalledWith(payload.guardHash);
+   expect((await app.inject(request)).statusCode).toBe(409);
+   expect(sessions.revokeByGuardHash).toHaveBeenCalledTimes(1);
+  } finally { await app.close(); }
+ });
+ it('rejects bad signatures, another client audience, and stale proofs', async () => {
+  const { app, sessions } = createMockService();
+  try {
+   const { payload, sign } = proof();
+   for (const body of [payload, { ...payload, audience: 'another-client' }, { ...payload, issuedAt: payload.issuedAt - 61 }]) {
+    const signature = body === payload ? 'x'.repeat(43) : sign(body);
+    expect((await app.inject({ method: 'POST', url: '/auth/manafield/backchannel/logout', payload: body,
+     headers: { 'x-manafield-signature': signature } })).statusCode).toBe(401);
+   }
+   expect(sessions.revokeByGuardHash).not.toHaveBeenCalled();
+  } finally { await app.close(); }
+ });
+ it('returns retryable failure on cleanup errors, then permits a newly signed retry', async () => {
+  const { app, sessions } = createMockService();
+  try {
+   sessions.revokeByGuardHash.mockRejectedValueOnce(new Error('Redis unavailable'));
+   const first = proof();
+   expect((await app.inject({ method: 'POST', url: '/auth/manafield/backchannel/logout', payload: first.payload,
+    headers: { 'x-manafield-signature': first.sign(first.payload) } })).statusCode).toBe(503);
+   const next = proof();
+   expect((await app.inject({ method: 'POST', url: '/auth/manafield/backchannel/logout', payload: next.payload,
+    headers: { 'x-manafield-signature': next.sign(next.payload) } })).statusCode).toBe(204);
+  } finally { await app.close(); }
+ });
+});
+
+it('prevents local administrator self-lockout by linking before step-up support', async () => {
+ const { app, role, links } = createMockService();
+ role.isModerator.mockResolvedValue(true);
+ try {
+  const response = await app.inject({ method: 'POST', url: '/auth/manafield/link/start', payload: {},
+   headers: { origin: ownOrigin, authorization: 'Bearer nla1_' + 'a'.repeat(43) } });
+  expect(response.statusCode).toBe(403);
+  expect(response.json().error).toBe('privileged_link_requires_step_up');
+  const status = await app.inject({ method: 'POST', url: '/auth/manafield/link/status', payload: {},
+   headers: { origin: ownOrigin, authorization: 'Bearer nla1_' + 'a'.repeat(43) } });
+  expect(status.json()).toMatchObject({ linkAllowed: false });
+  expect(links.size).toBe(0);
+ } finally { await app.close(); }
 });

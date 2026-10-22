@@ -1,0 +1,47 @@
+{
+  "id": "noctemblith",
+  "name": "Noctemblith Social",
+  "description": "Noctemblith with explicit Manafield Account and parent-session dependencies.",
+  "version": "0.1.1",
+  "healthOperation": "health",
+  "requires": {
+    "capabilities": {
+      "state": {
+        "id": "database.postgresql",
+        "version": "^1.0.0"
+      },
+      "media": {
+        "id": "storage.object",
+        "version": "^1.0.0"
+      },
+      "cache": {
+        "id": "cache.redis",
+        "version": "^1.0.0"
+      },
+      "account": {
+        "id": "manafield.identity.oauth2",
+        "version": "^1.0.0"
+      },
+      "sessionGuard": {
+        "id": "manafield.identity.session-guard",
+        "version": "^1.0.0"
+      }
+    }
+  },
+  "operations": [
+    {
+      "id": "health",
+      "description": "Checks the existing Noctemblith server readiness, including PostgreSQL and Redis.",
+      "input": null,
+      "output": null,
+      "binding": {
+        "type": "http",
+        "method": "GET",
+        "path": "/healthz",
+        "codecs": [
+          "json"
+        ]
+      }
+    }
+  ]
+}

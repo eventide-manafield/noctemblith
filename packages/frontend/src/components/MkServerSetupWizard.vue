@@ -10,7 +10,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 	</MkInput>
 
 	<MkFolder :defaultOpen="true">
-		<template #label>{{ i18n.ts._serverSetupWizard.howWillYouUseMisskey }}</template>
+		<template #label>{{ i18n.ts._serverSetupWizard.howWillYouUseMisskey.replace('Misskey', 'Noctemblith') }}</template>
 		<template #icon><i class="ti ti-settings-question"></i></template>
 
 		<div class="_gaps_s">

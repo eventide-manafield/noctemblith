@@ -9,6 +9,7 @@
 
 import * as fs from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
+import { noctemblithLoginTranslations } from './noctemblith-login.js';
 import { languages, primaries } from './const.js';
 import type { Locale } from './autogen/locale.js';
 import type { ILocale, ParameterizedString } from './types.js';
@@ -92,6 +93,10 @@ function build(): Record<Language, Locale> {
 				break;
 			}
 		}
+
+		// Keep fork-specific translations outside Crowdin-managed YAML files.
+		const loginCopy = noctemblithLoginTranslations[lang] ?? (lang === 'ja' ? undefined : noctemblithLoginTranslations.en);
+		if (loginCopy) a[key]._noctemblithLogin = { ...loginCopy };
 
 		return a;
 	}, {} as Record<Language, Locale>);

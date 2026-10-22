@@ -13378,4 +13378,38 @@ export interface Locale extends ILocale {
          */
         "mfm": string;
     };
+    "_noctemblithLogin": {
+        /**
+         * Manafieldアカウントでログイン
+         */
+        "manafield": string;
+        /**
+         * このサーバーにはManafieldアカウントでログインします。
+         */
+        "description": string;
+        /**
+         * ローカル管理者ログイン
+         */
+        "localAdmin": string;
+        /**
+         * このサーバーの未連携ローカル管理者アカウントでログインします。
+         */
+        "localAdminDescription": string;
+        /**
+         * ログイン設定を確認できませんでした。もう一度お試しください。
+         */
+        "unavailable": string;
+        /**
+         * このサーバーではローカル管理者専用ログインを利用できません。
+         */
+        "localAdminUnavailable": string;
+        /**
+         * この権限を持つアカウントではManafieldログインを完了できません。サーバー管理者にお問い合わせください。
+         */
+        "privilegedUnavailable": string;
+        /**
+         * 同じハンドルの既存アカウントがあります。アカウントの所有権確認とManafieldへの連携について、サーバー管理者にお問い合わせください。
+         */
+        "unlinkedAccount": string;
+    };
 }
