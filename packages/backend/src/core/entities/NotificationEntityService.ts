@@ -5,7 +5,7 @@
 
 import { Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { In } from 'typeorm';
+import { EntityNotFoundError, In } from 'typeorm';
 import { DI } from '@/di-symbols.js';
 import type { FollowRequestsRepository, NotesRepository, MiUser, UsersRepository } from '@/models/_.js';
 import { awaitAll } from '@/misc/prelude/await-all.js';
@@ -150,7 +150,10 @@ export class NotificationEntityService implements OnModuleInit {
 		//#endregion
 
 		const needsRole = notification.type === 'roleAssigned';
-		const role = needsRole ? await this.roleEntityService.pack(notification.roleId) : undefined;
+		const role = needsRole ? await this.roleEntityService.pack(notification.roleId).catch(error => {
+			if (error instanceof EntityNotFoundError) return null;
+			throw error;
+		}) : undefined;
 		// if the role has been deleted, don't show this notification
 		if (needsRole && !role) {
 			return null;
