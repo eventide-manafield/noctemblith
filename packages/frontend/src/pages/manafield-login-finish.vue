@@ -8,7 +8,7 @@ SPDX-License-Identifier: AGPL-3.0-only
  <p role="status">{{ message }}</p>
  <div v-if="handleRequired" class="_gaps_m">
   <p>마나필드 공개 프로필 핸들이 아직 등록되지 않았습니다. 먼저 마나필드에서 핸들을 최초 등록해 주세요. 등록한 공개 핸들은 녹템블리스 사용자명과 ActivityPub 주소로 사용되며, 등록 후에는 직접 변경할 수 없습니다.</p>
-  <a href="https://manafield.studio/account/profile">마나필드 공개 프로필 핸들 등록하기</a>
+  <a v-if="manafieldProfileUrl" :href="manafieldProfileUrl">마나필드 공개 프로필 핸들 등록하기</a>
   <p>등록을 마친 뒤 이 페이지로 돌아와 마나필드 계정으로 다시 로그인해 주세요.</p>
  </div>
  <div v-if="signupAvailable" class="_gaps_m">
@@ -38,6 +38,7 @@ import MkButton from '@/components/MkButton.vue';
 const message = ref('로그인 인증을 완료하는 중입니다…');
 const signupAvailable = ref(false);
 const handleRequired = ref(false);
+const manafieldProfileUrl = ref<string | null>(null);
 const signupActor = ref('');
 const signupConsent = ref(false);
 const signupBusy = ref(false);
@@ -119,6 +120,19 @@ onMounted(async () => {
  }
  if (!ticket) {
   handleRequired.value = status === 'handle-required';
+  if (handleRequired.value) {
+   try {
+    const response = await window.fetch('/auth/manafield/status', { credentials: 'same-origin', cache: 'no-store' });
+    if (response.ok) {
+     const settings = await response.json() as { enabled?: boolean; accountProfileUrl?: string | null };
+     if (settings.enabled && typeof settings.accountProfileUrl === 'string') {
+      manafieldProfileUrl.value = settings.accountProfileUrl;
+     }
+    }
+   } catch {
+    // Keep the guidance visible without inventing a fallback Account origin.
+   }
+  }
   message.value = status === 'handle-required'
    ? '녹템블리스 계정을 이용하려면 마나필드 공개 프로필 핸들을 먼저 등록해야 합니다.'
    : status === 'unlinked'

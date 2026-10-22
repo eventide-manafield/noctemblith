@@ -17,7 +17,7 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<p v-if="manafieldLinked">이 Noctemblith 계정은 마나필드 계정과 연결되어 있습니다.</p>
 					<p v-else>계정을 연결하려면 현재 Noctemblith 계정과 마나필드 계정의 소유권을 모두 확인해야 합니다.</p>
 					<p v-if="manafieldMessage" role="status">{{ manafieldMessage }}</p>
-					<a v-if="manafieldHandleRequired" href="https://manafield.studio/account/profile">마나필드에서 공개 프로필 핸들 등록하기</a>
+					<a v-if="manafieldHandleRequired && manafieldProfileUrl" :href="manafieldProfileUrl">마나필드에서 공개 프로필 핸들 등록하기</a>
 					<MkButton v-if="!manafieldLinked" primary :disabled="manafieldBusy" @click="startManafieldLink">
 						{{ manafieldBusy ? '연결 준비 중…' : '마나필드 계정 연결하기' }}
 					</MkButton>
@@ -96,14 +96,16 @@ const manafieldLinked = ref(false);
 const manafieldBusy = ref(false);
 const manafieldMessage = ref('');
 const manafieldHandleRequired = ref(false);
+const manafieldProfileUrl = ref<string | null>(null);
 
 async function getManafieldState() {
  try {
   const status = await window.fetch('/auth/manafield/status', { cache: 'no-store' });
   if (!status.ok) return;
-  const availability = await status.json() as { enabled?: boolean };
+  const availability = await status.json() as { enabled?: boolean; accountProfileUrl?: string | null };
   if (!availability.enabled || !$i) return;
   manafieldEnabled.value = true;
+  manafieldProfileUrl.value = typeof availability.accountProfileUrl === 'string' ? availability.accountProfileUrl : null;
 
   const linked = await window.fetch('/auth/manafield/link/status', {
    method: 'POST',

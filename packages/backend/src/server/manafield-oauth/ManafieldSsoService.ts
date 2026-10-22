@@ -143,11 +143,13 @@ export class ManafieldSsoService {
   const header = request.headers.authorization;
   const token = typeof header === 'string' && header.startsWith('Bearer ')
    ? header.slice(7) : '';
-  // Existing-account linking deliberately requires a native login, not a
-  // delegated access token with narrower or potentially unrelated scopes.
-  if (token.length !== 16) return null;
+  // Accept only first-party browser sessions or the existing native login
+  // proof. Never fall through to the general delegated/app-token resolver.
+  if (!isManafieldBrowserSessionToken(token) && token.length !== 16) return null;
   try {
-   const user = await this.authenticateService.authenticateNativeForLink(token);
+   const user = isManafieldBrowserSessionToken(token)
+    ? await this.sessionService.resolve(token)
+    : await this.authenticateService.authenticateNativeForLink(token);
    return user ? this.liveLocalUser(user.id) : null;
   } catch {
    return null;
@@ -292,7 +294,10 @@ export class ManafieldSsoService {
  public registerRoutes(fastify: FastifyInstance): void {
   fastify.get('/auth/manafield/status', async (_request, reply) => {
    noStore(reply);
-   return { enabled: this.settings != null };
+   return {
+    enabled: this.settings != null,
+    accountProfileUrl: this.settings ? new URL('/account/profile', this.settings.accountOrigin).href : null,
+   };
   });
 
   // Logout only this browser's Noctemblith session; never end Account Core's session.
