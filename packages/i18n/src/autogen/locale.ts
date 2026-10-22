@@ -13412,4 +13412,26 @@ export interface Locale extends ILocale {
          */
         "unlinkedAccount": string;
     };
+    "_noctemblithBrand": {
+        /**
+         * Noctemblith
+         */
+        "name": string;
+        /**
+         * Noctemblith ゲーム
+         */
+        "games": string;
+        /**
+         * 原作 Misskey のクレジット
+         */
+        "upstreamCredits": string;
+        /**
+         * タイムライン配信最適化 (FTT)
+         */
+        "fanout": string;
+        /**
+         * リアクション最適化 (RBT)
+         */
+        "reactionsBoost": string;
+    };
 }

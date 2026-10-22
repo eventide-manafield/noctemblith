@@ -28,32 +28,25 @@ const themeColor = chalk.hex('#7A35B6');
 function greet(props: { version: string; format: LogFormat }) {
 	if (!envOption.quiet && props.format === 'json') {
 		// JSONモードでは生のコンソール出力を避け、各案内を1件ずつ構造化ログにします。
-		bootLogger.info('Welcome to Misskey!');
-		bootLogger.info(`Misskey v${props.version}`, null, true);
-		bootLogger.info('Misskey is an open-source decentralized microblogging platform.');
-		bootLogger.info('If you like Misskey, please consider donating to support dev. https://misskey-hub.net/docs/donate/');
+		bootLogger.info('Welcome to Noctemblith!');
+		bootLogger.info(`Noctemblith v${props.version}`, null, true);
+		bootLogger.info('Noctemblith is an open-source decentralized microblogging platform.');
+		bootLogger.info('Upstream Misskey development donations: https://misskey-hub.net/docs/donate/');
 		return;
 	}
 
 	if (!envOption.quiet) {
-		//#region Misskey logo
-		const v = `v${props.version}`;
-		console.log(themeColor('  _____ _         _           '));
-		console.log(themeColor(' |     |_|___ ___| |_ ___ _ _ '));
-		console.log(themeColor(' | | | | |_ -|_ -| \'_| -_| | |'));
-		console.log(themeColor(' |_|_|_|_|___|___|_,_|___|_  |'));
-		console.log(' ' + chalk.gray(v) + themeColor('                        |___|\n'.substring(v.length)));
-		//#endregion
+		console.log(themeColor(` Noctemblith v${props.version}`));
 
-		console.log(' Misskey is an open-source decentralized microblogging platform.');
-		console.log(chalk.rgb(255, 136, 0)(' If you like Misskey, please consider donating to support dev. https://misskey-hub.net/docs/donate/'));
+		console.log(' Noctemblith is an open-source decentralized microblogging platform.');
+		console.log(chalk.rgb(255, 136, 0)(' Upstream Misskey development donations: https://misskey-hub.net/docs/donate/'));
 
 		console.log('');
 		console.log(chalkTemplate`--- ${os.hostname()} {gray (PID: ${process.pid.toString()})} ---`);
 	}
 
-	bootLogger.info('Welcome to Misskey!');
-	bootLogger.info(`Misskey v${props.version}`, null, true);
+	bootLogger.info('Welcome to Noctemblith!');
+	bootLogger.info(`Noctemblith v${props.version}`, null, true);
 }
 
 /**
@@ -78,7 +71,7 @@ export async function masterMain() {
 		process.exit(1);
 	}
 
-	bootLogger.succ('Misskey initialized');
+	bootLogger.succ('Noctemblith initialized');
 
 	initExtraThreadPool(config);
 

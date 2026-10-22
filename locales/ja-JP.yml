@@ -3593,3 +3593,10 @@ _noctemblithLogin:
   localAdminUnavailable: "このサーバーではローカル管理者専用ログインを利用できません。"
   privilegedUnavailable: "この権限を持つアカウントではManafieldログインを完了できません。サーバー管理者にお問い合わせください。"
   unlinkedAccount: "同じハンドルの既存アカウントがあります。アカウントの所有権確認とManafieldへの連携について、サーバー管理者にお問い合わせください。"
+
+_noctemblithBrand:
+  name: "Noctemblith"
+  games: "Noctemblith ゲーム"
+  upstreamCredits: "原作 Misskey のクレジット"
+  fanout: "タイムライン配信最適化 (FTT)"
+  reactionsBoost: "リアクション最適化 (RBT)"

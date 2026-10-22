@@ -159,7 +159,7 @@ function openRemote(options: OpenOnRemoteOptions, targetHost?: string): void {
 async function specifyHostAndOpenRemote(options: OpenOnRemoteOptions): Promise<void> {
 	const { canceled, result: hostTemp } = await os.inputText({
 		title: i18n.ts.inputHostName,
-		placeholder: 'misskey.example.com',
+		placeholder: 'social.example.com',
 	});
 
 	if (canceled) return;

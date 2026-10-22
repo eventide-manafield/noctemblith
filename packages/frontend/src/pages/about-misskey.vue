@@ -10,8 +10,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 			<div class="_gaps_m znqjceqz">
 				<div v-panel class="about">
 					<div ref="containerEl" class="container" :class="{ playing: easterEggEngine != null }">
-						<img src="/client-assets/about-icon.png" alt="" class="icon" draggable="false" @load="iconLoaded" @click="gravity"/>
-						<div class="misskey">Misskey</div>
+						<img src="/static-assets/noctemblith.svg" alt="" class="icon" draggable="false" @load="iconLoaded" @click="gravity"/>
+						<div class="misskey">{{ i18n.ts._noctemblithBrand.name }}</div>
 						<div class="version">v{{ version }}</div>
 						<span v-for="emoji in easterEggEmojis" :key="emoji.id" class="emoji" :data-physics-x="emoji.left" :data-physics-y="emoji.top" :class="{ _physics_circle_: !emoji.emoji.startsWith(':') }">
 							<MkCustomEmoji v-if="emoji.emoji[0] === ':'" class="emoji" :name="emoji.emoji" :normal="true" :noStyle="true" :fallbackToImage="true"/>
@@ -21,6 +21,8 @@ SPDX-License-Identifier: AGPL-3.0-only
 					<button v-if="thereIsTreasure" class="_button treasure" @click="getTreasure"><img src="/fluent-emoji/1f3c6.png" class="treasureImg"></button>
 				</div>
 				<div style="text-align: center;">
+					{{ i18n.ts.introMisskey }}<br>
+					<strong>{{ i18n.ts._noctemblithBrand.upstreamCredits }}</strong><br>
 					{{ i18n.ts._aboutMisskey.about }}<br><a href="https://misskey-hub.net/docs/about-misskey/" target="_blank" class="_link">{{ i18n.ts.learnMore }}</a>
 				</div>
 				<div v-if="$i != null" style="text-align: center;">

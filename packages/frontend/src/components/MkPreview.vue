@@ -65,7 +65,7 @@ const openForm = async () => {
 		},
 		baz: {
 			type: 'string',
-			default: 'Misskey makes you happy.',
+			default: 'Noctemblith makes you happy.',
 			label: 'This is a string property',
 		},
 	});

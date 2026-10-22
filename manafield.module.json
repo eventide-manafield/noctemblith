@@ -2,7 +2,7 @@
   "id": "noctemblith",
   "name": "Noctemblith Social",
   "description": "Manafield-native Noctemblith social backend: PostgreSQL state, S3 media and Redis cache are required.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "healthOperation": "health",
   "requires": {
     "capabilities": {

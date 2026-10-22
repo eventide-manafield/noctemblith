@@ -33,7 +33,7 @@ import { launchPlugins } from '@/plugin.js';
 import { initTelemetry } from '@/telemetry.js';
 
 export async function common(createVue: () => Promise<App<Element>>) {
-	console.info(`Misskey v${version}`);
+	console.info(`Noctemblith v${version}`);
 
 	if (_DEV_) {
 		console.warn('Development mode!!!');

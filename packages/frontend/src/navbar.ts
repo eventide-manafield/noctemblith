@@ -141,7 +141,7 @@ export const navbarItemDef = reactive<{
 		to: '/my/achievements',
 	},
 	games: {
-		title: 'Misskey Games',
+		title: i18n.ts._noctemblithBrand.games,
 		icon: 'ti ti-device-gamepad',
 		to: '/games',
 	},

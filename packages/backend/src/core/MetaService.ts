@@ -16,6 +16,12 @@ import type { GlobalEvents } from '@/core/GlobalEventService.js';
 import { FeaturedService } from '@/core/FeaturedService.js';
 import type { OnApplicationShutdown } from '@nestjs/common';
 
+function applyNoctemblithRepositoryDefaults(meta: MiMeta): MiMeta {
+	if (meta.repositoryUrl === 'https://github.com/misskey-dev/misskey') meta.repositoryUrl = 'https://github.com/eventide-manafield/noctemblith';
+	if (meta.feedbackUrl === 'https://github.com/misskey-dev/misskey/issues/new') meta.feedbackUrl = 'https://github.com/eventide-manafield/noctemblith/issues';
+	return meta;
+}
+
 @Injectable()
 export class MetaService implements OnApplicationShutdown {
 	private cache: MiMeta | undefined;
@@ -71,7 +77,7 @@ export class MetaService implements OnApplicationShutdown {
 
 	@bindThis
 	public async fetch(noCache = false): Promise<MiMeta> {
-		if (!noCache && this.cache) return this.cache;
+		if (!noCache && this.cache) return applyNoctemblithRepositoryDefaults(this.cache);
 
 		return await this.db.transaction(async transactionalEntityManager => {
 			// 過去のバグでレコードが複数出来てしまっている可能性があるので新しいIDを優先する
@@ -84,6 +90,7 @@ export class MetaService implements OnApplicationShutdown {
 			const meta = metas[0];
 
 			if (meta) {
+				applyNoctemblithRepositoryDefaults(meta);
 				this.cache = applyManafieldObjectStorageMetadata(meta, this.config.objectStorageBinding);
 				return this.cache;
 			} else {
@@ -93,6 +100,8 @@ export class MetaService implements OnApplicationShutdown {
 						MiMeta,
 						{
 							id: 'x',
+							repositoryUrl: 'https://github.com/eventide-manafield/noctemblith',
+							feedbackUrl: 'https://github.com/eventide-manafield/noctemblith/issues',
 						},
 						['id'],
 					)

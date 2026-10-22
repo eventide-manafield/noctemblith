@@ -14,12 +14,12 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 
 		info: {
 			version: config.version,
-			title: 'Misskey API',
+			title: 'Noctemblith API',
 		},
 
 		externalDocs: {
 			description: 'Repository',
-			url: 'https://github.com/misskey-dev/misskey',
+			url: 'https://github.com/eventide-manafield/noctemblith',
 		},
 
 		servers: [{
@@ -98,7 +98,7 @@ export function genOpenapiSpec(config: Config, includeSelfRef = false) {
 			description: desc,
 			externalDocs: {
 				description: 'Source code',
-				url: `https://github.com/misskey-dev/misskey/blob/develop/packages/backend/src/server/api/endpoints/${endpoint.name}.ts`,
+				url: `https://github.com/eventide-manafield/noctemblith/blob/release/noctemblith-branding-20261022/packages/backend/src/server/api/endpoints/${endpoint.name}.ts`,
 			},
 			...(endpoint.meta.tags ? {
 				tags: [endpoint.meta.tags[0]],

@@ -18,7 +18,7 @@ import type { FastifyInstance, FastifyPluginOptions } from 'fastify';
 
 const nodeinfo2_1path = '/nodeinfo/2.1';
 const nodeinfo2_0path = '/nodeinfo/2.0';
-const nodeinfo_homepage = 'https://misskey-hub.net';
+const nodeinfo_homepage = 'https://github.com/eventide-manafield/noctemblith';
 
 @Injectable()
 export class NodeinfoServerService {

@@ -1,7 +1,7 @@
 {
 	"name": "misskey",
 	"version": "2026.10.0",
-	"noctemblithVersion": "0.1.1",
+	"noctemblithVersion": "0.1.2",
 	"codename": "nasubi",
 	"repository": {
 		"type": "git",

@@ -9,6 +9,7 @@
 
 import * as fs from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
+import { applyNoctemblithBranding } from './noctemblith-brand.js';
 import { noctemblithLoginTranslations } from './noctemblith-login.js';
 import { languages, primaries } from './const.js';
 import type { Locale } from './autogen/locale.js';
@@ -94,10 +95,17 @@ function build(): Record<Language, Locale> {
 			}
 		}
 
+		a[key].repositoryUrlDescription = lang === 'ko'
+			? '실행 중인 서버의 소스 코드를 공개한 저장소 URL을 입력해 주세요. 변경하지 않은 Noctemblith를 사용하시면 https://github.com/eventide-manafield/noctemblith 를 입력해 주세요. 소스를 수정하셨다면 해당 변경사항을 공개한 저장소 주소를 입력해 주세요.'
+			: lang === 'ja'
+				? '実行中のサーバーのソースコードを公開しているリポジトリURLを入力してください。未変更のNoctemblithは https://github.com/eventide-manafield/noctemblith を、変更した場合は変更内容を公開したリポジトリを指定してください。'
+				: 'Enter the repository containing the source code running on this server. For unmodified Noctemblith, use https://github.com/eventide-manafield/noctemblith. If modified, use the repository publishing your changes.';
+
 		// Keep fork-specific translations outside Crowdin-managed YAML files.
 		const loginCopy = noctemblithLoginTranslations[lang] ?? (lang === 'ja' ? undefined : noctemblithLoginTranslations.en);
 		if (loginCopy) a[key]._noctemblithLogin = { ...loginCopy };
 
+		applyNoctemblithBranding(a[key], lang);
 		return a;
 	}, {} as Record<Language, Locale>);
 }

@@ -2,7 +2,7 @@
   "id": "noctemblith",
   "name": "Noctemblith Social",
   "description": "Noctemblith with explicit Manafield Account and parent-session dependencies.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "healthOperation": "health",
   "requires": {
     "capabilities": {
